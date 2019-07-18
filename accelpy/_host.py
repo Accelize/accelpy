@@ -152,12 +152,12 @@ class Host:
             if isfile(cred_path):
                 symlink(cred_path, self._accelize_drm_cred_json)
                 break
-            else:
-                raise ConfigurationException(
-                    'No Accelize DRM credential found. Please, make sure to '
-                    f'have your "cred.json" file installed in "{HOME_DIR}", '
-                    f'current directory or path specified with the '
-                    f'"user_config" argument.')
+        else:
+            raise ConfigurationException(
+                'No Accelize DRM credential found. Please, make sure to '
+                f'have your "cred.json" file installed in "{HOME_DIR}", '
+                f'current directory or path specified with the '
+                f'"user_config" argument.')
 
     def __enter__(self):
         return self

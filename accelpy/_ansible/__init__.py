@@ -1,7 +1,7 @@
 # coding=utf-8
 """Ansible configuration"""
 from os import makedirs, fsdecode, scandir, listdir
-from os.path import join, realpath, dirname, splitext, basename
+from os.path import join, realpath, dirname, splitext, basename, isfile
 from sys import executable
 
 from accelpy._common import (
@@ -48,10 +48,6 @@ class Ansible:
                     # Get playbook source
                     if name == 'playbook.yml' and entry.is_file():
                         playbook_src = entry.path
-
-                    # Get Accelize credentials file
-                    elif name == 'cred.json' and entry.is_file():
-                        symlink(entry.path, join(self._config_dir, 'cred.json'))
 
                     # Get roles
                     elif name == 'roles' and entry.is_dir():
@@ -132,23 +128,32 @@ class Ansible:
         if cls._ANSIBLE_EXECUTABLE is None:
             from ansible import __path__
             site_packages = dirname(__path__[0])
-            record_path = ''
 
+            # Set default value in case not found
+            cls._ANSIBLE_EXECUTABLE = 'ansible"'
+
+            # Tries to find Ansible version installed as dependency
             with scandir(site_packages) as entries:
                 for entry in entries:
-                    name = entry.name
-                    if name.startswith(
-                            'ansible-') and splitext(name)[1] == '.dist-info':
-                        record_path = join(entry.path, 'RECORD')
-                        break
 
-            with open(record_path, 'rt') as record:
-                for line in record:
-                    path = line.split(',', 1)[0]
-                    if basename(path) in ('ansible', 'ansible.exe'):
-                        break
+                    # Find ansible package dist-info
+                    if (not entry.name.startswith('ansible-') or
+                            splitext(entry.name)[1] != '.dist-info'):
+                        continue
 
-            cls._ANSIBLE_EXECUTABLE = realpath(join(site_packages, path))
+                    # Find ansible package files list
+                    for name in ('RECORD', 'installed-files.txt'):
+                        path = join(entry.path, name)
+
+                        if isfile(path):
+                            # Find "ansible" command path
+                            with open(path, 'rt') as record:
+                                for line in record:
+                                    rel_path = line.split(',', 1)[0]
+                                    if basename(rel_path) == 'ansible':
+                                        cls._ANSIBLE_EXECUTABLE = realpath(join(
+                                            site_packages, rel_path))
+                                        return cls._ANSIBLE_EXECUTABLE
 
         return cls._ANSIBLE_EXECUTABLE
 

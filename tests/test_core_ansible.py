@@ -24,15 +24,11 @@ def test_ansible(tmpdir):
         tmpdir (py.path.local) tmpdir pytest fixture
     """
     from accelpy._ansible import Ansible
-    from accelpy._common import yaml_read, json_write
+    from accelpy._common import yaml_read
 
     source_dir = tmpdir.join('source').ensure(dir=True)
     config_dir = tmpdir.join('config').ensure(dir=True)
     variables = dict(key='value')
-
-    # Ensure Accelize "cred.json" exists
-    json_write(dict(client_secret='', client_id=''),
-               source_dir.join('cred.json'))
 
     # Test: Create configuration (With not specific provider and application)
     ansible = Ansible(config_dir, variables=variables, user_config=source_dir)
@@ -41,7 +37,6 @@ def test_ansible(tmpdir):
     assert 'pre_tasks' in playbook
     assert playbook['vars'] == variables
     assert playbook['roles'] == ['common.init']
-    assert config_dir.join('cred.json').isfile()
 
     # Test: Re-create should not raise
     ansible.create_configuration()

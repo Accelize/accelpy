@@ -60,6 +60,7 @@ def test_command_line_interface(tmpdir):
     application = mock_application(source_dir)
     mock_terraform_provider(source_dir)
     artifact = mock_packer_provider(source_dir)
+    source_dir.ensure('cred.json')
 
     # Function to call the CLI
 

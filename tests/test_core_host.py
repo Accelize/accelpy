@@ -31,6 +31,7 @@ def test_host(tmpdir):
     application = mock_application(source_dir)
     mock_terraform_provider(source_dir)
     artifact = mock_packer_provider(source_dir)
+    source_dir.ensure('cred.json')
 
     # Tests
     try:
@@ -41,7 +42,8 @@ def test_host(tmpdir):
 
         # Test: Create host with specified name + use as context manager
         name = 'testing'
-        with Host(application=application, name=name) as host:
+        with Host(application=application, name=name,
+                  user_config=source_dir) as host:
             assert host.name == name
             assert name in str(host)
             assert name in repr(host)
