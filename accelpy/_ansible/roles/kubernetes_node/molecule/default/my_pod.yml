@@ -1,0 +1,23 @@
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: my-pod
+spec:
+  containers:
+    - name: my-pod
+      image: accelize/accelpy-ci:container_service
+      securityContext:
+        privileged: true
+      resources:
+        limits:
+          xilinx.com/fpga-xilinx_aws-vu9p-f1-04261818_dynamic_5_0-0: 1
+      command: ["/bin/sh"]
+      args: ["-c", "while true; do echo hello; sleep 10;done"]
+      volumeMounts:
+        - name: sys
+          mountPath: /sys
+  volumes:
+    - name: sys
+      hostPath:
+        path: /sys

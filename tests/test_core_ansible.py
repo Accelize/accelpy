@@ -41,9 +41,6 @@ def test_ansible(tmpdir):
     # Test: Re-create should not raise
     ansible.create_configuration()
 
-    # Test: lint should not raise on basic configuration
-    ansible.lint()
-
     # Test: Galaxy install role
     ansible.galaxy_install(['dev-sec.os-hardening', 'dev-sec.ssh-hardening'])
 

@@ -319,8 +319,12 @@ def _run_command():
         if output:
             print(output)
         parser.exit()
+
     except (AccelizeException, OSError) as exception:
         parser.error(str(exception))
+
+    except KeyboardInterrupt:
+        parser.error("Interrupted by user")
 
 
 if __name__ == '__main__':

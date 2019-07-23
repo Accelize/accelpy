@@ -1,0 +1,43 @@
+---
+
+- name: Ensure kubectl has bash completion
+  lineinfile:
+    path: "/home/{{ ansible_user }}/.bashrc"
+    line: source <(kubectl completion bash)
+    state: present
+
+- name: Ensure ".kube" directory exists in user home directory
+  file:
+    path: "/home/{{ ansible_user }}/.kube"
+    state: directory
+
+- name: 'Ensure "{{ ansible_user }}" user has read access to configuration'
+  file:
+    path: /etc/kubernetes/admin.conf
+    group: "{{ ansible_user }}"
+    mode: 0640
+
+- name: Symlink the kubectl "admin.conf" to "~/.kube/conf"
+  file:
+    src: /etc/kubernetes/admin.conf
+    dest: "/home/{{ ansible_user }}/.kube/config"
+    state: link
+
+- name: Ensure FPGA Kubernetes device plugin is present
+  get_url:
+    url: "{{ item.url }}"
+    dest: /etc/kubernetes/fpga-device-plugin.yaml
+  with_items:
+    - required: "{{ (accelize_drm_driver_name == 'aws_f1') }}"
+      url: "https://raw.githubusercontent.com/Xilinx/FPGA_as_a_Service/\
+            master/k8s-fpga-device-plugin/trunk/aws/aws-fpga-device-plugin.yaml"
+    - required: "{{ (accelize_drm_driver_name == 'xilinx_xrt') }}"
+      url: "https://raw.githubusercontent.com/Xilinx/FPGA_as_a_Service/\
+            master/k8s-fpga-device-plugin/trunk/fpga-device-plugin.yml"
+  when: (master_node | bool) and (item.required | bool)
+  retries: 10
+  delay: 1
+
+- name: Ensure FPGA Kubernetes device plugin is enabled as deamonset
+  command: kubectl create -f /etc/kubernetes/fpga-device-plugin.yaml
+  when: master_node | bool

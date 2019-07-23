@@ -1,0 +1,17 @@
+---
+- name: Converge
+  hosts: all
+  roles:
+    - role: kubernetes_node
+  vars:
+    package_name: accelize/accelpy-ci
+    package_version: container_service
+    firewall_rules:
+      - start_port: 8080
+        end_port: 8080
+        protocol: tcp
+        direction: ingress
+    fpga_slots: [0]
+    # Required to run "geerlingguy.kubernetes" in Docker
+    kubernetes_kubelet_extra_args: "--fail-swap-on=false
+                                    --cgroup-driver=cgroupfs"

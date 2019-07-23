@@ -1,0 +1,19 @@
+---
+galaxy_info:
+  author: Accelize
+  description: 'Install a FPGA ready Kubernetes cluster.'
+  min_ansible_version: 2.8
+  license: Apache License 2.0
+  platforms:
+    - name: Ubuntu
+      versions:
+        - bionic
+
+dependencies:
+  - role: geerlingguy.docker
+    vars:
+      docker_install_compose: false
+  - role: geerlingguy.kubernetes
+    vars:
+      kubernetes_role: "{{ master_node | ternary('master', 'node') }}"
+      kubernetes_allow_pods_on_master: "{{ single_node }}"

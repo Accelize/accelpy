@@ -1,10 +1,14 @@
 # coding=utf-8
 """Global configuration"""
+from importlib import import_module as _import_module
 from json import dump as _json_dump, load as _json_load
+from json.decoder import JSONDecodeError as _JSONDecodeError
 from os import (fsdecode as _fsdecode, symlink as _symlink, chmod as _chmod,
-                makedirs as _makesdirs)
+                makedirs as _makesdirs, scandir as _scandir)
 from os.path import (
-    expanduser as _expanduser, isdir as _isdir, realpath as _realpath)
+    expanduser as _expanduser, isdir as _isdir, realpath as _realpath,
+    join as _join, dirname as _dirname, basename as _basename,
+    isfile as _isfile, splitext as _splitext)
 from collections.abc import Mapping as _Mapping
 from subprocess import run as _run, PIPE as _PIPE
 
@@ -14,9 +18,11 @@ try:
 except ImportError:
     # Else use pure-Python library
     from yaml import SafeLoader as _Loader, Dumper as _Dumper
-from yaml import dump as _yaml_dump, load as _yaml_load
+from yaml import dump as _yaml_dump, load as _yaml_load, YAMLError as _YAMLError
 
-from accelpy.exceptions import RuntimeException as _RuntimeException
+from accelpy.exceptions import (
+    RuntimeException as _RuntimeException,
+    ConfigurationException as _ConfigurationException)
 
 #: User configuration directory
 HOME_DIR = _expanduser('~/.accelize')
@@ -36,8 +42,14 @@ def yaml_read(path):
     Returns:
         dict or list: Un-serialized content
     """
-    with open(_fsdecode(path), 'rt') as file:
-        return _yaml_load(file, Loader=_Loader)
+    path = _realpath(_fsdecode(path))
+    with open(path, 'rt') as file:
+        try:
+            return _yaml_load(file, Loader=_Loader)
+
+        except _YAMLError as exception:
+            raise _ConfigurationException(
+                f'Unable to read "{path}": {str(exception)}')
 
 
 def yaml_write(data, path, **kwargs):
@@ -64,8 +76,14 @@ def json_read(path, **kwargs):
     Returns:
         dict or list: Un-serialized content
     """
-    with open(_fsdecode(path), 'rt') as file:
-        return _json_load(file, **kwargs)
+    path = _realpath(_fsdecode(path))
+    with open(path, 'rt') as file:
+        try:
+            return _json_load(file, **kwargs)
+
+        except _JSONDecodeError as exception:
+            raise _ConfigurationException(
+                f'Unable to read "{path}": {str(exception)}')
 
 
 def json_write(data, path, **kwargs):
@@ -175,3 +193,62 @@ def get_sources_filters(provider, application):
     """
     return [key for key in
             ('common', provider.split(',')[0], application) if key]
+
+
+def get_python_package_entry_point(package, entry_point):
+    """
+    Find an CLI entry point from a Python package.
+
+    Args:
+        package (str): Package name.
+        entry_point (str): Entry point name.
+
+    Returns:
+        str or None: Path to entry point, or None if nothing found.
+    """
+    site_packages_path = _dirname(_import_module(package).__path__[0])
+
+    # Find package info
+    # Can be a directory ending by ".dist-info" or ".egg-info"
+    with _scandir(site_packages_path) as entries:
+        for entry in entries:
+            if (entry.name.startswith(f'{package}-') and
+                    _splitext(entry.name)[1] in ('.dist-info', '.egg-info')):
+                package_info_path = entry.path
+                break
+
+        else:
+            # Package is not installed or do not have package info
+            return None
+
+    # Find manifest file
+    # Can be a "RECORD" or a "installed-files.txt" file in package info folder
+    for name in ('RECORD', 'installed-files.txt'):
+        manifest_path = _join(package_info_path, name)
+        if _isfile(manifest_path):
+            break
+
+    else:
+        # Package do not have manifest file
+        return None
+
+    # Find entry point relative path in manifest file
+    # Possibles manifest file lines formats: "path\n" or "path,checksum\n"
+    with open(manifest_path, 'rt') as manifest:
+
+        for line in manifest:
+            entry_point_rel_path = line.strip().split(',', 1)[0]
+            if _basename(entry_point_rel_path) == entry_point:
+                break
+
+        else:
+            # Entry point is not present in manifest
+            return None
+
+    # Convert to absolute path
+    # Paths in manifest are relative to site-packages or package info
+    for prefix in (site_packages_path, package_info_path):
+        entry_point_path = _realpath(_join(prefix, entry_point_rel_path))
+
+        if _isfile(entry_point_path):
+            return entry_point_path

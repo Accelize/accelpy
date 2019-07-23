@@ -1,0 +1,21 @@
+{% if item.registry is defined %}
+FROM {{ item.registry.url }}/{{ item.image }}
+{% else %}
+FROM {{ item.image }}
+{% endif %}
+
+# "geerlingguy.kubernetes" extra requirements:
+#  - iproute2
+
+RUN  apt-get update && \
+apt-get install -y --no-install-recommends \
+    bash \
+    ca-certificates \
+    gnupg \
+    iproute2 \
+    python3 \
+    sudo \
+    systemd \
+    && \
+apt-get clean && \
+groupadd -g 1001 fpgauser

@@ -3,23 +3,31 @@
   become: true
   pre_tasks:
 
-    - name: Ensure APT packages are up to date
+    - name: Ensure Apt cache is up to date
       apt:
         update_cache: true
-        upgrade: true
       retries: 10
       delay: 1
+      when: ansible_os_family == 'Debian'
 
-    - name: Ensure minimal dependencies are installed
+    - name: Ensure minimal Apt dependencies are installed
       apt:
-        name: "{{ packages }}"
+        name:
+          - apt-transport-https
+          - gnupg
+          - software-properties-common
         state: present
-        install_recommends: true
+        install_recommends: false
         update_cache: true
-      vars:
-        packages:
-        - apt-transport-https
-        - gnupg
-        - software-properties-common
       retries: 10
       delay: 1
+      when: ansible_os_family == 'Debian'
+
+    - name: Ensure minimal Yum dependencies are installed
+      yum:
+        name: gnupg
+        state: present
+        install_weak_deps: false
+      retries: 10
+      delay: 1
+      when: ansible_os_family == 'RedHat'

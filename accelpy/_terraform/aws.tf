@@ -22,17 +22,34 @@ locals {
 
   # Driver name to use with Accelize DRM service
   accelize_drm_driver_name = "aws_f1"
+
+  # AMI Information for supported OS
+  ami_users = {
+    "centos_7" = "centos"
+    "ubuntu_bionic" = "ubuntu"
+    "ubuntu_xenial" = "ubuntu"
+  }
+  ami_owners = {
+    "centos_7" = "679593333241"
+    "ubuntu_bionic" = "099720109477"
+    "ubuntu_xenial" = "099720109477"
+  }
+  ami_names = {
+    "centos_7" = "CentOS Linux 7 x86_64 HVM EBS *"
+    "ubuntu_bionic" = "ubuntu/images/hvm-ssd/ubuntu-bionic-18.04-amd64-server-*"
+    "ubuntu_xenial" = "ubuntu/images/ebs-ssd/ubuntu-xenial-16.04-amd64-server-*"
+  }
 }
 
-# Instance image (Latest Ubuntu server LTS AMI) and sudo user name
+# Instance image and sudo user name
 
 data "aws_ami" "image" {
   most_recent = true
-  owners      = ["099720109477"]
+  owners      = [local.ami_owners[local.remote_os]]
 
   filter {
     name   = "name"
-    values = ["ubuntu/images/hvm-ssd/ubuntu-bionic-18.04-amd64-server-*"]
+    values = [local.ami_names[local.remote_os]]
   }
 
   filter {
@@ -42,7 +59,7 @@ data "aws_ami" "image" {
 }
 
 locals {
-  remote_user = "ubuntu"
+  remote_user = local.ami_users[local.remote_os]
   ami         = var.package_vm_image != "" ? var.package_vm_image : data.aws_ami.image.id
 }
 

@@ -48,30 +48,36 @@ def test_apply(application_yml, tmpdir):
             host.apply()
 
             # Get test command
-            command = Application(yaml_path).get(
-                'test', 'shell', env=provider)
+            try:
+                command = Application(yaml_path).get(
+                    'test', 'shell', env=provider)
+            except KeyError:
+                pytest.xfail('No test defined')
 
-            # Evaluate "accelpy" shell variables
-            for attr in dir(host):
+            # Run test
+            else:
+                # Evaluate "accelpy" shell variables
+                for attr in dir(host):
 
-                if attr.startswith('_'):
-                    continue
+                    if attr.startswith('_'):
+                        continue
 
-                shell_var = f'$(accelpy {attr})'
-                if shell_var in command:
-                    command = command.replace(shell_var, getattr(host, attr))
+                    shell_var = f'$(accelpy {attr})'
+                    if shell_var in command:
+                        command = command.replace(
+                            shell_var, getattr(host, attr))
 
-            # Run test command
-            sleep(5)
+                # Run test command
+                sleep(5)
 
-            print(f'\nRunning test command:\n{command.strip()}\n')
-            result = run(command, universal_newlines=True,
-                         stderr=STDOUT, stdout=PIPE, shell=True)
-            print(f'\nTest command returned: '
-                  f'{result.returncode}\n{result.stdout}')
+                print(f'\nRunning test command:\n{command.strip()}\n')
+                result = run(command, universal_newlines=True,
+                             stderr=STDOUT, stdout=PIPE, shell=True)
+                print(f'\nTest command returned: '
+                      f'{result.returncode}\n{result.stdout}')
 
-            if result.returncode:
-                pytest.fail(pytrace=False)
+                if result.returncode:
+                    pytest.fail(pytrace=False)
 
     # Restore mocked config dir
     finally:

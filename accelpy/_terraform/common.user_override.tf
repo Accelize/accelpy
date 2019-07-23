@@ -9,7 +9,7 @@ locals {
   prefix = "accelize_"
 }
 
-# FIrewall/Security group IP ranges to allow
+# Firewall/Security group IP ranges to allow
 # ==========================================
 #
 # By default, only the current machine can access to the application host

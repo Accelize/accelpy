@@ -1,11 +1,12 @@
 # coding=utf-8
 """Ansible configuration"""
 from os import makedirs, fsdecode, scandir, listdir
-from os.path import join, realpath, dirname, splitext, basename, isfile
+from os.path import join, dirname
 from sys import executable
 
 from accelpy._common import (
-    yaml_read, yaml_write, call, get_sources_dirs, symlink, get_sources_filters)
+    yaml_read, yaml_write, call, get_sources_dirs, symlink, get_sources_filters,
+    get_python_package_entry_point)
 
 
 class Ansible:
@@ -126,35 +127,8 @@ class Ansible:
             str: path
         """
         if cls._ANSIBLE_EXECUTABLE is None:
-            from ansible import __path__
-            site_packages = dirname(__path__[0])
-
-            # Set default value in case not found
-            cls._ANSIBLE_EXECUTABLE = 'ansible'
-
-            # Tries to find Ansible version installed as dependency
-            with scandir(site_packages) as entries:
-                for entry in entries:
-
-                    # Find ansible package dist-info
-                    if (not entry.name.startswith('ansible-') or
-                            splitext(entry.name)[1] not in
-                            ('.dist-info', '.egg-info')):
-                        continue
-
-                    # Find ansible package files list
-                    for name in ('RECORD', 'installed-files.txt'):
-                        path = join(entry.path, name)
-
-                        if isfile(path):
-                            # Find "ansible" command path
-                            with open(path, 'rt') as record:
-                                for line in record:
-                                    rel_path = line.split(',', 1)[0]
-                                    if basename(rel_path) == 'ansible':
-                                        cls._ANSIBLE_EXECUTABLE = realpath(join(
-                                            site_packages, rel_path))
-                                        return cls._ANSIBLE_EXECUTABLE
+            cls._ANSIBLE_EXECUTABLE = get_python_package_entry_point(
+                'ansible', 'ansible') or 'ansible'
 
         return cls._ANSIBLE_EXECUTABLE
 
@@ -178,16 +152,6 @@ class Ansible:
             [executable, f"{self._executable()}-{utility}" if utility else
              self._executable] + list(args), cwd=self._config_dir, check=check,
             pipe_stdout=pipe_stdout, **run_kwargs)
-
-    def lint(self):
-        """
-        Lint playbook.
-
-        Raises:
-            project.exceptions.RuntimeException: Error in playbook.
-        """
-        self._ansible(self._playbook, '--nocolor', utility='lint',
-                      pipe_stdout=True)
 
     def galaxy_install(self, roles):
         """
