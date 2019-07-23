@@ -130,7 +130,7 @@ class Ansible:
             site_packages = dirname(__path__[0])
 
             # Set default value in case not found
-            cls._ANSIBLE_EXECUTABLE = 'ansible"'
+            cls._ANSIBLE_EXECUTABLE = 'ansible'
 
             # Tries to find Ansible version installed as dependency
             with scandir(site_packages) as entries:
@@ -138,7 +138,8 @@ class Ansible:
 
                     # Find ansible package dist-info
                     if (not entry.name.startswith('ansible-') or
-                            splitext(entry.name)[1] != '.dist-info'):
+                            splitext(entry.name)[1] not in
+                            ('.dist-info', '.egg-info')):
                         continue
 
                     # Find ansible package files list
