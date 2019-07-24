@@ -4,7 +4,8 @@ from importlib import import_module as _import_module
 from json import dump as _json_dump, load as _json_load
 from json.decoder import JSONDecodeError as _JSONDecodeError
 from os import (fsdecode as _fsdecode, symlink as _symlink, chmod as _chmod,
-                makedirs as _makesdirs, scandir as _scandir)
+                makedirs as _makesdirs, scandir as _scandir,
+                environ as _environ)
 from os.path import (
     expanduser as _expanduser, isdir as _isdir, realpath as _realpath,
     join as _join, dirname as _dirname, basename as _basename,
@@ -252,3 +253,23 @@ def get_python_package_entry_point(package, entry_point):
 
         if _isfile(entry_point_path):
             return entry_point_path
+
+
+def no_color():
+    """
+    If "ACCELPY_NO_COLOR" environment variable is set, return True.
+
+    Returns:
+        bool: True if no color mode.
+    """
+    return bool(_environ.get("ACCELPY_NO_COLOR", False))
+
+
+def debug():
+    """
+    If "ACCELPY_DEBUG" environment variable is set, return True.
+
+    Returns:
+        bool: True if debug mode.
+    """
+    return bool(_environ.get("ACCELPY_DEBUG", False))

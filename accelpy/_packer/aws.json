@@ -2,7 +2,8 @@
   "variables": {
     "aws_access_key": "",
     "aws_secret_key": "",
-    "aws_instance_type": "t3.micro"
+    "aws_instance_type": "t3.micro",
+    "accelize_drm_driver_name": "aws_f1"
   },
   "builders": [
     {

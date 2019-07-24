@@ -18,4 +18,4 @@ phases:
 
   build:
     commands:
-      - pytest -s -m require_csp
+      - ACCELPY_NO_COLOR=True pytest -s -m require_csp

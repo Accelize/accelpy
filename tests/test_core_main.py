@@ -13,22 +13,27 @@ def generate_name():
     return f'pytest_{str(uuid1())}'
 
 
-def cli(*args):
+def cli(*args, **env):
     """
     Call cli
 
     Args:
         *args: CLI arguments.
+        **env: Environment variables
 
     Returns:
         subprocess.CompletedProcess: Utility call result.
     """
+    from os import environ
     from sys import executable
     from accelpy._common import call
     from accelpy.__main__ import __file__ as cli_exec
 
+    call_env = environ.copy()
+    call_env.update(env)
+
     return call([executable, cli_exec] + [str(arg) for arg in args],
-                pipe_stdout=True, check=False)
+                pipe_stdout=True, check=False, env=call_env)
 
 
 def test_command_line_interface(tmpdir):
@@ -93,7 +98,11 @@ def test_command_line_interface(tmpdir):
         assert not result.returncode
 
         # Test: Bad name should raise
-        result = cli('plan', '-n', 'pytest_not_exists')
+        result = cli('plan', '-n', 'pytest_not_exists', ACCELPY_DEBUG='')
+        assert result.returncode
+
+        # Test: Debug mode should still raise
+        result = cli('plan', '-n', 'pytest_not_exists', ACCELPY_DEBUG='True')
         assert result.returncode
 
         # Test: plan

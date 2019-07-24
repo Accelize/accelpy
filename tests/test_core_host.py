@@ -10,6 +10,7 @@ def test_host(tmpdir):
     Args:
         tmpdir (py.path.local) tmpdir pytest fixture
     """
+    import accelpy._common as common
     import accelpy._host as accelpy_host
     from accelpy._host import Host, iter_hosts
     from accelpy.exceptions import ConfigurationException
@@ -21,6 +22,10 @@ def test_host(tmpdir):
     from tests.test_core_application import mock_application
 
     source_dir = tmpdir.join('source').ensure(dir=True)
+
+    # Mock ~/.accelize
+    common_home_dir = common.HOME_DIR
+    common.HOME_DIR = tmpdir.join('home').ensure(dir=True)
 
     # Mock config dir
     accelpy_host_config_dir = accelpy_host.CONFIG_DIR
@@ -117,6 +122,12 @@ def test_host(tmpdir):
 
         assert not config_dir.join(host.name).exists()
 
+        # Test: Clean up in case of initialization error
+        with pytest.raises(FileNotFoundError):
+            Host(application='path_not_exists', user_config=source_dir,
+                 name='should_be_cleaned')
+        assert not config_dir.join('should_be_cleaned').exists()
+
         # Test: Load existing host
         with Host(name=host_not_destroyed) as host:
             assert host.private_ip
@@ -157,6 +168,14 @@ def test_host(tmpdir):
             Host(application=application, user_config=source_dir,
                  keep_config=False)
 
+        # Test: Missing Accelize DRM credentials
+        source_dir.join('cred.json').remove()
+        application = mock_application(source_dir)
+        with pytest.raises(ConfigurationException):
+            Host(application=application, user_config=source_dir,
+                 keep_config=False)
+
     # Restore mocked config dir
     finally:
         accelpy_host.CONFIG_DIR = accelpy_host_config_dir
+        common.HOME_DIR = common_home_dir

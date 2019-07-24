@@ -19,7 +19,7 @@ locals {
   ansible_python = local.remote_os == "centos_7" ? "/usr/bin/python" : "/usr/bin/python3"
 
   # Ansible-playbook CLI with disabling SSH host key checking and ensuring using a fixed Python version
-  ansible = "ANSIBLE_NOCOLOR=True ANSIBLE_HOST_KEY_CHECKING=False ${var.ansible} playbook.yml -e 'ansible_python_interpreter=${local.ansible_python}' -u ${local.remote_user} --private-key ${local.ssh_key_private_path} --extra-vars 'accelize_drm_driver_name=${local.accelize_drm_driver_name}' --extra-vars 'remote_user=${local.remote_user}'"
+  ansible = "ANSIBLE_REMOTE_USER=${local.remote_user} ${var.ansible} playbook.yml -e 'ansible_python_interpreter=${local.ansible_python}' -u ${local.remote_user} --private-key ${local.ssh_key_private_path} --extra-vars 'accelize_drm_driver_name=${local.accelize_drm_driver_name}' --extra-vars 'os_hardening=${local.os_hardening}' --extra-vars 'ssh_hardening=${local.ssh_hardening}'"
 }
 
 # Host FPGA configuration
@@ -87,6 +87,12 @@ output "remote_user" {
 locals {
   # Remote OS to use (Default to latest Ubuntu LTS)
   remote_os = "ubuntu_bionic"
+
+  # Enable OS security hardening
+  os_hardening = "false"
+
+  # Enable SSH security hardening
+  ssh_hardening = "false"
 }
 
 # User public IP Address

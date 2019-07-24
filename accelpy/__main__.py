@@ -321,10 +321,13 @@ def _run_command():
         parser.exit()
 
     except (AccelizeException, OSError) as exception:
-        parser.error(str(exception))
+        from accelpy._common import debug
+        if not debug():
+            parser.error(str(exception))
+        raise
 
     except KeyboardInterrupt:
-        parser.error("Interrupted by user")
+        parser.exit(status=1, message="Interrupted by user\n")
 
 
 if __name__ == '__main__':

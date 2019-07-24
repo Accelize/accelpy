@@ -285,3 +285,57 @@ fpga:
 """)
     with pytest.raises(ConfigurationException):
         lint(yml_file)
+
+    # Test: Extra section should not raise
+    yml_file.write("""
+application:
+  name: my_app
+  version: 1.0.0
+
+package:
+  type: container_image
+  name: my_container_image
+
+fpga:
+  image: image
+  
+extra_section:
+  extra_key: value
+""")
+    with pytest.raises(ConfigurationException):
+        lint(yml_file)
+
+    # Test: Extra key should raise
+    yml_file.write("""
+application:
+  name: my_app
+  version: 1.0.0
+
+package:
+  type: container_image
+  name: my_container_image
+
+fpga:
+  image: image
+  extra_key: value
+""")
+    with pytest.raises(ConfigurationException):
+        lint(yml_file)
+
+    # Test: Extra key should raise in environment
+    yml_file.write("""
+application:
+  name: my_app
+  version: 1.0.0
+
+package:
+  type: container_image
+  name: my_container_image
+
+fpga:
+  image: image
+  my_provider:
+    extra_key: value
+""")
+    with pytest.raises(ConfigurationException):
+        lint(yml_file)

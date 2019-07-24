@@ -5,7 +5,7 @@ from os import makedirs, remove
 from os.path import join, isfile
 from time import sleep
 
-from accelpy._common import json_write, symlink
+from accelpy._common import json_write, symlink, no_color
 from accelpy._hashicorp import Utility
 from accelpy.exceptions import RuntimeException
 
@@ -58,9 +58,6 @@ class Terraform(Utility):
         used. Directories are checked in the listed order to allow user to
         override default configuration easily.
         """
-        # Lazy import: Only used if new configuration
-        from accelpy._ansible import Ansible
-
         # Symlink common plugins dir to to avoid to re-download them each time
         dot_dir = join(self._config_dir, '.terraform')
         makedirs(dot_dir, exist_ok=True)
@@ -82,9 +79,18 @@ class Terraform(Utility):
         tf_vars = {
             key: value for key, value in self._variables.items()
             if value is not None}
-        tf_vars['ansible'] = Ansible.playbook_exec()
         json_write(
             tf_vars, join(self._config_dir, 'generated.auto.tfvars.json'))
+
+    @property
+    def _no_color(self):
+        """
+        Configure color.
+
+        Returns:
+            str: color argument.
+        """
+        return '-no-color' if no_color() else ''
 
         # Initialize terraform
     def _init(self):
@@ -92,7 +98,7 @@ class Terraform(Utility):
         Initialize Terraform
         """
         if not self._initialized:
-            self._exec('init', '-no-color', '-input=false', pipe_stdout=True)
+            self._exec('init', self._no_color, '-input=false', pipe_stdout=True)
             self._initialized = True
 
     def plan(self):
@@ -104,7 +110,7 @@ class Terraform(Utility):
             str: Command output
         """
         self._init()
-        return self._exec('plan', '-no-color', '-input=false', '-out=tfplan',
+        return self._exec('plan', self._no_color, '-input=false', '-out=tfplan',
                           pipe_stdout=True).stdout
 
     def apply(self, quiet=False, retries=10, delay=1.0):
@@ -121,7 +127,7 @@ class Terraform(Utility):
         self._init()
 
         failures = 0
-        args = ['apply', '-no-color', '-auto-approve', '-input=false']
+        args = ['apply', self._no_color, '-auto-approve', '-input=false']
         if isfile(join(self._config_dir, 'tfplan')):
             # Use "tfplan" if any
             args.append('tfplan')
@@ -156,7 +162,8 @@ class Terraform(Utility):
             quiet (bool): If True, hide outputs.
         """
         self._init()
-        self._exec('destroy', '-no-color', '-auto-approve', pipe_stdout=quiet)
+        self._exec('destroy', self._no_color, '-auto-approve',
+                   pipe_stdout=quiet)
 
     def refresh(self, quiet=False):
         """
@@ -168,7 +175,7 @@ class Terraform(Utility):
         """
         if self._has_state():
             self._init()
-            self._exec('refresh', '-no-color', '-input=false', '.',
+            self._exec('refresh', self._no_color, '-input=false', '.',
                        pipe_stdout=quiet)
 
     @property
@@ -179,7 +186,8 @@ class Terraform(Utility):
         Returns:
             dict: Configuration output.
         """
-        process = self._exec('output', '-no-color', '-json', pipe_stdout=True)
+        process = self._exec('output', self._no_color, '-json',
+                             pipe_stdout=True)
         out = loads(process.stdout.strip())
         return {key: out[key]['value'] for key in out}
 

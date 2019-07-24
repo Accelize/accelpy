@@ -1,0 +1,26 @@
+---
+- name: Ensure Apt cache is up to date
+  apt:
+    update_cache: true
+  retries: 10
+  delay: 1
+  when: ansible_os_family == 'Debian'
+
+- name: Ensure system is up to date
+  apt:
+    name: "*"
+    state: latest
+    update_cache: true
+    autoremove: true
+    purge: true
+  retries: 10
+  delay: 1
+  when: ansible_os_family == 'Debian'
+
+- name: Ensure system is up to date
+  yum:
+    name: "*"
+    state: latest
+  retries: 10
+  delay: 1
+  when: ansible_os_family == 'RedHat'

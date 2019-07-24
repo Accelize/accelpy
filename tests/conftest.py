@@ -32,13 +32,10 @@ def parametrize_application_yml(argvalues, ids):
     from accelpy._application import Application
 
     with scandir(dirname(realpath(__file__))) as entries:
-        print(dirname(realpath(__file__)))
         for entry in entries:
             name, ext = splitext(entry.name)
             if ext == '.yml':
-                print(entry.path)
                 app = Application(entry.path)
-                print(app, app.environments)
                 if 'test' not in app._definition and not app.environments:
                     continue
 

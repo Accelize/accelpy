@@ -1,3 +1,3 @@
 recursive-include accelpy *
-recursive-exclude accelpy *.pyc
+recursive-exclude accelpy *.pyc .ansible-lint
 prune accelpy/_ansible/roles/*/molecule

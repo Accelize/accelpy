@@ -3,7 +3,8 @@ from os import chmod, fsdecode, makedirs, scandir, symlink
 from os.path import isabs, isdir, isfile, join, realpath
 
 from accelpy._application import Application
-from accelpy._common import HOME_DIR, json_read, json_write, get_sources_dirs
+from accelpy._common import (
+    HOME_DIR, json_read, json_write, get_sources_dirs, no_color, debug)
 from accelpy.exceptions import ConfigurationException
 
 CONFIG_DIR = join(HOME_DIR, 'hosts')
@@ -373,12 +374,14 @@ class Host:
         if not self._packer_config:
             # Lazy import: May not be used all time
             from accelpy._packer import Packer
+            from accelpy._ansible import Ansible
 
             variables = {
                 f'provider_param_{index}': value
                 for index, value in enumerate(
                     (self._provider or '').split(','))}
             variables['image_name'] = self._name
+            variables['ansible'] = Ansible.playbook_exec()
 
             self._packer_config = Packer(
                 provider=self._provider, config_dir=self._config_dir,
@@ -397,8 +400,22 @@ class Host:
         if not self._terraform_config:
             # Lazy import: May not be used all time
             from accelpy._terraform import Terraform
+            from accelpy._ansible import Ansible
+
+            no_color_mode = no_color()
+            debug_mode = debug()
+            ansible_env = ' '.join(f'{key}={value}' for key, value in {
+                'ANSIBLE_DISPLAY_SKIPPED_HOSTS': debug_mode,
+                'ANSIBLE_DISPLAY_OK_HOSTS': debug_mode,
+                'ANSIBLE_HOST_KEY_CHECKING': False,
+                'ANSIBLE_DEPRECATION_WARNINGS': debug_mode,
+                'ANSIBLE_ACTION_WARNINGS': debug_mode,
+                'ANSIBLE_FORCE_COLOR': not no_color_mode,
+                'ANSIBLE_NOCOLOR': no_color_mode
+            }.items())
 
             variables = dict(
+                ansible=f"{ansible_env} {Ansible.playbook_exec()}",
                 firewall_rules=self._application['firewall_rules'],
                 fpga_count=self._app('fpga', 'count'),
                 package_vm_image=self._app('package', 'name')
@@ -426,6 +443,18 @@ class Host:
 
         return self._application_definition
 
+    def _terraform_has_state(self):
+        """
+        Check if Terraform has a state.
+
+        Returns:
+            bool: True If Terraform has state.
+        """
+        try:
+            return bool(self._terraform.state_list())
+        except (ConfigurationException, FileNotFoundError):
+            return False
+
     def _clean_up(self):
         """
         Clean up configuration directory if there is no remaining resource
@@ -433,15 +462,15 @@ class Host:
         """
         if self._config_dir is not None and isdir(self._config_dir):
             # Destroy managed infrastructure if exists
-            if self._destroy_on_exit and self._terraform.state_list():
+            if self._destroy_on_exit and self._terraform_has_state():
                 self._terraform.destroy(quiet=True)
 
             # Check if there is some remaining resources in state file
             # If it is the case, do not clean up configuration to allow
             # to reuse it
-            if not self._terraform.state_list() and not self._keep_config:
+            if not self._terraform_has_state() and not self._keep_config:
 
                 # Lazy import: Only used on remove
                 from shutil import rmtree
 
-                rmtree(self._config_dir)
+                rmtree(self._config_dir, ignore_errors=True)

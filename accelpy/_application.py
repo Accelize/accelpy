@@ -94,6 +94,13 @@ FORMAT = {
             value_type=dict,
             default={},
         ),
+    },
+    'test': {
+        '_node': dict,
+        'shell': dict(
+            desc='Shell command used to test application that should return a 0'
+                 ' code in cas of success.'
+        )
     }
 }
 
@@ -193,6 +200,12 @@ class Application:
 
             self._validate_section(
                 node_type, section, section_name, section_format)
+
+        # Check for unknown sections
+        for section_name in definition:
+            if section_name not in FORMAT:
+                raise ConfigurationException(
+                    f'Unknown "{section_name}" section.')
 
         return definition
 
@@ -351,9 +364,16 @@ class Application:
             self._environments.add(env)
             env_found = True
             env_node = node[env]
+
+            # Env that is not a dict is likely an unknown key
+            if not isinstance(env_node, dict) or env_node == '_node':
+                raise ConfigurationException(
+                    f'Unknown "{env_node}" key in "{section_name}" section.')
+
+            # Check environment integrity
             for key in node_format:
 
-                if key == '_node' or not isinstance(env_node, dict):
+                if key == '_node':
                     continue
 
                 value = env_node.get(key, node.get(key))
@@ -369,5 +389,12 @@ class Application:
                 if key in env_node:
                     env_node[key] = Application._check_value(
                         key, key_format, value, section_name)
+
+            # Check for unknown keys in environment
+            for key in env_node:
+                if key not in node_format or key == '_node':
+                    raise ConfigurationException(
+                        f'Unknown "{key}" key in "{section_name}" section '
+                        f'for "{env}" environment.')
 
         return env_found

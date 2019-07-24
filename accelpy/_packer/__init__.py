@@ -2,7 +2,7 @@
 """Terraform configuration"""
 from os.path import join
 
-from accelpy._common import recursive_update, json_read, json_write
+from accelpy._common import recursive_update, json_read, json_write, no_color
 from accelpy._hashicorp import Utility
 
 
@@ -38,11 +38,7 @@ class Packer(Utility):
         """
         Generate packer configuration file.
         """
-        # Lazy import: Only used on new configuration creation
-        from accelpy._ansible import Ansible
-
         # Get template from this package and user directories
-        self._variables['ansible'] = Ansible.playbook_exec()
         sources = dict(vars=dict(variables=self._variables))
 
         for name, src_path in self._list_sources():
@@ -66,7 +62,8 @@ class Packer(Utility):
             dict: Packer manifest (Last build only).
         """
         # Build
-        self._exec('build', '-color=false', self._template, pipe_stdout=quiet)
+        self._exec('build', '-color=false' if no_color() else '',
+                   self._template, pipe_stdout=quiet)
 
         # Read manifest file
         manifest = json_read(join(self._config_dir, 'packer-manifest.json'))

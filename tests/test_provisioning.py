@@ -2,7 +2,8 @@
 import pytest
 
 
-def test_ansible_roles(ansible_role):
+@pytest.mark.molecule
+def test_ansible_role(ansible_role):
     """
     Test roles using molecule.
 
@@ -16,7 +17,7 @@ def test_ansible_roles(ansible_role):
 
 
 @pytest.mark.require_csp
-def test_apply(application_yml, tmpdir):
+def test_application(application_yml, tmpdir):
     """
     Test applications based on their application definition.
 
@@ -24,6 +25,7 @@ def test_apply(application_yml, tmpdir):
         application_yml (dict): Application detail.
         tmpdir (py.path.local) tmpdir pytest fixture
     """
+    from os import environ
     from time import sleep
     from subprocess import run, STDOUT, PIPE
     import accelpy._host as accelpy_host
@@ -32,6 +34,8 @@ def test_apply(application_yml, tmpdir):
 
     yaml_path = application_yml['path']
     provider = application_yml['provider']
+
+    environ['ACCELPY_DEBUG'] = 'True'
 
     # Mock config dir
     accelpy_host_config_dir = accelpy_host.CONFIG_DIR
@@ -82,3 +86,4 @@ def test_apply(application_yml, tmpdir):
     # Restore mocked config dir
     finally:
         accelpy_host.CONFIG_DIR = accelpy_host_config_dir
+        del environ['ACCELPY_DEBUG']

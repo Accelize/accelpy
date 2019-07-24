@@ -295,7 +295,7 @@ class Utility:
         Returns:
             subprocess.CompletedProcess: Utility call result.
         """
-        return call([self._get_executable()] + list(args),
+        return call([self._get_executable()] + [arg for arg in args if arg],
                     cwd=self._config_dir, check=check, pipe_stdout=pipe_stdout,
                     **run_kwargs)
 

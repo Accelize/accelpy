@@ -58,7 +58,7 @@ def test_yaml_read_write(tmpdir):
     # Test: badly formatted file
     yam_file.write('key: "')
     with pytest.raises(ConfigurationException):
-        print(yaml_read(yam_file))
+        yaml_read(yam_file)
 
 
 def test_get_python_package_entry_point(tmpdir):
@@ -118,6 +118,10 @@ def test_get_python_package_entry_point(tmpdir):
             f'../{package_name}/module.py\n'
             f'../../{entry_point_name}\n', encoding='utf-8')
         assert get_python_package_entry_point(*args) == str(entry_point_path)
+
+        # Entry point file not exists
+        entry_point_path.remove()
+        assert get_python_package_entry_point(*args) is None
 
     finally:
         common._import_module = common_import_module

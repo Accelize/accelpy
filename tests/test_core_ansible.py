@@ -36,7 +36,7 @@ def test_ansible(tmpdir):
     playbook = yaml_read(config_dir.join('playbook.yml'))[0]
     assert 'pre_tasks' in playbook
     assert playbook['vars'] == variables
-    assert playbook['roles'] == ['common.init']
+    assert 'common.init' in playbook['roles']
 
     # Test: Re-create should not raise
     ansible.create_configuration()
