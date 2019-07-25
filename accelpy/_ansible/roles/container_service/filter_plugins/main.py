@@ -46,7 +46,7 @@ def publish_ports(firewall_rules, redirect=False, *_, **__):
         for port in rules_ports(firewall_rules, redirect=redirect))
 
 
-def publish_devices(path_list, *_, **__):
+def publish_devices(path_list, *_, device=False, privileged=False, **__):
     """
     Returns paths as "--device" or "--mount" arguments.
 
@@ -54,15 +54,34 @@ def publish_devices(path_list, *_, **__):
 
     Args:
         path_list (str): List of devices paths, one path per line.
+        device (bool): If True, use "--device" args, else use only "--mount"
+        privileged (bool): If True, force the add of "--privileged" argument.
 
     Returns:
         str: arguments
     """
-    return ' '.join(
-        f'--device={path.strip()}' if path.startswith('/dev') else
-        f'--mount=type=bind,src={path.strip()},target={path.strip()}'
-        for path in path_list.strip().splitlines()
-        if not path.startswith('/home')) or '--privileged'
+    path_list = path_list.strip().splitlines()
+    args_list = []
+    prefixes = ('/dev/dri', '/sys/devices/pci0000:00')
+
+    # Always use "--privileged" if no paths.
+    if privileged or not path_list:
+        args_list.append('--privileged')
+
+    # Ensure sufficient paths are shared
+    for prefix in prefixes:
+        if not any(path.startswith(prefix) for path in path_list):
+            path_list.append(prefix)
+
+    # Generate arguments
+    for path in path_list:
+        path = path.strip()
+        if device and path.startswith('/dev') and path not in prefixes:
+            args_list.append(f'--device={path}')
+        else:
+            args_list.append(f'--mount=type=bind,src={path},target={path}')
+
+    return ' '.join(args_list)
 
 
 class FilterModule(object):

@@ -52,10 +52,9 @@ def test_application(application_yml, tmpdir):
             host.apply()
 
             # Get test command
-            try:
-                command = Application(yaml_path).get(
-                    'test', 'shell', env=provider)
-            except KeyError:
+            command = Application(yaml_path).get(
+                'test', 'shell', env=provider)
+            if not command:
                 pytest.xfail('No test defined')
 
             # Run test

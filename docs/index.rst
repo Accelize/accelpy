@@ -62,10 +62,11 @@ Use and integrate it easily
     *accelpy* can be operated using the command line interface or the Python
     API.
 
-Deploy application on secure host that follow DevOps good practices
-    The default configurations provided with *accelpy* are done with DevOps
-    good practices and enhanced security in mind. Relevant
-    `DevSec hardening baselines <https://dev-sec.io/>`_ are applied by default.
+.. TODO: Disabled, experimental
+    Deploy application on secure host that follow DevOps good practices
+        The default configurations provided with *accelpy* are done with DevOps
+        good practices and enhanced security in mind. Relevant
+        `DevSec hardening baselines <https://dev-sec.io/>`_ are applied by default.
 
 Be free to use it as you want
     *accelpy* generate a configuration for your application that can then be

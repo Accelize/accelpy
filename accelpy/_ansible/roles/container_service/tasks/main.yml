@@ -1,6 +1,11 @@
 ---
 
-- name: Create application user in FPGA user group
+- name: Ensure FPGA user group exists
+  group:
+    name: fpgauser
+    state: present
+
+- name: Ensure application user exists ans is in FPGA user group
   user:
     name: appuser
     shell: /bin/bash
@@ -14,18 +19,28 @@
 - name: Add project Atomic repository
   apt_repository:
     repo: ppa:projectatomic/ppa
-  when: rootless|bool
   retries: 10
   delay: 1
+  when: (rootless | bool) and ansible_os_family == 'Debian'
 
 - name: Ensure Podman is installed
   apt:
     name: podman
     state: present
     update_cache: true
+    install_recommends: false
   retries: 10
   delay: 1
-  when: rootless|bool
+  when: (rootless | bool) and ansible_os_family == 'Debian'
+
+- name: Ensure Podman is installed
+  yum:
+    name: podman
+    state: present
+    install_weak_deps: false
+  retries: 10
+  delay: 1
+  when: (rootless | bool) and ansible_os_family == 'RedHat'
 
 - name: Ensure Docker python package is installed [Ansible requirement]
   apt:
@@ -34,7 +49,16 @@
     install_recommends: false
   retries: 10
   delay: 1
-  when: not rootless|bool
+  when: not (rootless | bool) and ansible_os_family == 'Debian'
+
+- name: Ensure Docker python package is installed [Ansible requirement]
+  yum:
+    name: python-docker
+    state: present
+    install_weak_deps: false
+  retries: 10
+  delay: 1
+  when: not (rootless | bool) and ansible_os_family == 'RedHat'
 
 - name: Pull application container image using Docker
   docker_image:

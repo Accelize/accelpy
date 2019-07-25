@@ -15,15 +15,15 @@
       "source_ami_filter": {
         "filters": {
           "virtualization-type": "hvm",
-          "name": "ubuntu/images/hvm-ssd/ubuntu-bionic-18.04-amd64-server-*",
+          "name": "CentOS Linux 7 x86_64 HVM EBS *",
           "root-device-type": "ebs"
         },
         "owners": [
-          "099720109477"
+          "679593333241"
         ],
         "most_recent": true
       },
-      "ssh_username": "ubuntu",
+      "ssh_username": "centos",
       "instance_type": "{{user `aws_instance_type`}}",
       "shutdown_behavior": "terminate",
       "spot_price": "auto",

@@ -164,6 +164,9 @@ resource "aws_instance" "instance" {
   tags = {
     Name = local.name
   }
+  root_block_device {
+    volume_size = local.root_volume_size
+  }
 
   # On-demand specific configuration
   instance_initiated_shutdown_behavior = "terminate"
@@ -197,6 +200,9 @@ resource "aws_spot_instance_request" "instance_spot" {
   key_name             = local.key_name
   tags = {
     Name = local.name
+  }
+  root_block_device {
+    volume_size = local.root_volume_size
   }
 
   # Spot specific configuration

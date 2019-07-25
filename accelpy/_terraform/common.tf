@@ -85,14 +85,17 @@ output "remote_user" {
 # Host OS
 
 locals {
-  # Remote OS to use (Default to latest Ubuntu LTS)
-  remote_os = "ubuntu_bionic"
+  # Remote OS to use
+  remote_os = "centos_7"
 
   # Enable OS security hardening
   os_hardening = "false"
 
   # Enable SSH security hardening
   ssh_hardening = "false"
+
+  # Size of the root volume (GiB)
+  root_volume_size = "10"
 }
 
 # User public IP Address

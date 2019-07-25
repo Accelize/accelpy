@@ -6,8 +6,8 @@ driver:
 lint:
   name: yamllint
 platforms:
-  - name: ubuntu_bionic
-    image: ubuntu:bionic
+  - name: centos_7
+    image: centos:7
     privileged: true
     volume_mounts:
       - "/sys/fs/cgroup:/sys/fs/cgroup:rw"
@@ -33,9 +33,9 @@ scenario:
     - destroy
     - dependency
     - syntax
-    - create
-    - prepare
     # TODO: Remove once geerlingguy.kubernetes Failure on Docker fixed
+    # - create
+    # - prepare
     # - converge
     # - idempotence
     # - side_effect

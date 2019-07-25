@@ -21,9 +21,10 @@ dependencies:
   # FPGA drivers
 
   - role: 'accelize.aws_fpga'
-    vars:
-      aws_fpga_allow_non_root: true
-      aws_fpga_sdk_override_group: true
+    # TODO: Disabled, crash in AWS Udev script
+    # vars:
+    #   aws_fpga_allow_non_root: true
+    #  aws_fpga_sdk_override_group: true
     when: accelize_drm_driver_name == 'aws_f1'
 
   - role: 'accelize.xilinx_xrt'

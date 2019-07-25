@@ -18,7 +18,7 @@ install:
 
 script:
     # Runs tests
-    - 'pytest -v -m "not require_csp" --cov=accelpy --cov-report=term-missing'
+    - 'pytest -vs -m "not require_csp" --cov=accelpy --cov-report=term-missing'
 
 after_success:
     # Sends coverage to codecov.io
