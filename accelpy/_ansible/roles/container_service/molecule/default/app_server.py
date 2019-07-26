@@ -1,32 +1,20 @@
 #! /usr/bin/env python3
 # coding=utf-8
 """Fake application web server"""
-from os import getuid, getgid, environ
-from json import dumps
 from http.server import HTTPServer, BaseHTTPRequestHandler
-from accelize_drm.fpga_drivers import get_driver
-from traceback import format_exc
+from subprocess import run, PIPE, STDOUT
 
 
 class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
-    """Server that return FPGA response"""
+    """Server that test FPGA presence"""
 
     def do_GET(self):
         """GET"""
-        try:
-            driver = get_driver(name='aws_f1')(
-                fpga_slot_id=int(environ['FPGA_SLOTS'].split(',', 1)[0]))
-            code = 200
-            msg = dumps(dict(
-                response=driver.read_register(0),
-                uid=getuid(), gid=getgid(),
-            ))
-        except Exception:
-            code = 500
-            msg = format_exc()
-        self.send_response(code)
+        process = run(['/opt/xilinx/xrt/bin/awssak', 'list'],
+                      stderr=STDOUT, stdout=PIPE)
+        self.send_response(500 if process.returncode else 200)
         self.end_headers()
-        self.wfile.write(msg.encode() + b'\n')
+        self.wfile.write(process.stdout)
 
 
 HTTPServer(('0.0.0.0', 8080), SimpleHTTPRequestHandler).serve_forever()

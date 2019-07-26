@@ -12,7 +12,7 @@ firewall_rules:
 
 fpga:
   aws,eu-west-1:
-    image: agfi-04d518960fd114e28
+    image: agfi-071909cc191313a51
   count: 1
 
 package:
@@ -23,8 +23,8 @@ package:
 accelize_drm:
   conf:
     design:
-      boardType: DRM_125
+      boardType: DRM_100
     licensing:
       url: https://master.metering.accelize.com
     drm:
-      frequency_mhz: 125
+      frequency_mhz: 100

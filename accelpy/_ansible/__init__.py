@@ -161,7 +161,8 @@ class Ansible:
             roles (iterable of str): Roles to install.
         """
         if roles:
-            self._ansible('install', *roles, utility='galaxy')
+            self._ansible('install', '--force-with-deps',
+                          *roles, utility='galaxy')
 
     @classmethod
     def playbook_exec(cls):
