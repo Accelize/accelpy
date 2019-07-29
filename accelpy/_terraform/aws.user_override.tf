@@ -86,3 +86,15 @@ EOF
 locals {
   spot_instance = true
 }
+
+# Root volume size
+# ================
+#
+# It is possible to define the size of the root volume of instances.
+#
+# Uncomment and fill with the required size in GiB:
+/*
+locals {
+  spot_instance = "10"
+}
+*/

@@ -7,7 +7,7 @@ lint:
   name: yamllint
 platforms:
   - name: docker
-    image: centos:7
+    image: ubuntu:bionic
     privileged: true
     volume_mounts:
       - "/sys/fs/cgroup:/sys/fs/cgroup:rw"
@@ -15,14 +15,14 @@ platforms:
     environment:
       container: docker
 
-#  - name: podman
-#    image: ubuntu:bionic
-#    privileged: true
-#    volume_mounts:
-#      - "/sys/fs/cgroup:/sys/fs/cgroup:rw"
-#    command: "/lib/systemd/systemd"
-#    environment:
-#      container: docker
+  - name: podman
+    image: ubuntu:bionic
+    privileged: true
+    volume_mounts:
+      - "/sys/fs/cgroup:/sys/fs/cgroup:rw"
+    command: "/lib/systemd/systemd"
+    environment:
+      container: docker
 
 provisioner:
   name: ansible

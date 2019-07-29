@@ -18,16 +18,20 @@ FORMAT = {
         'type': dict(
             required=True,
             desc='Application type.',
+            values=('container_service', 'kubernetes_node'),
             default='container_service'),
-        'entry_point': dict(
-            desc='Application entry point. The application entry point depends '
-                 'on the application type.'
+        'variables': dict(
+            desc='Application variables. See application type documentation to '
+                 'see available variables.',
+            value_type=dict,
+            default={},
         )
     },
     'package': {
         '_node': dict,
         'type': dict(
             default='container_image',
+            values=('container_image', 'vm_image'),
             desc='Type of package.'),
         'name': dict(
             required=True,
@@ -65,11 +69,9 @@ FORMAT = {
             desc='FPGA bitstream image to use. Should be a single string or a '
                  'list of strings with same number of elements as FPGA count.'
         ),
-        'type': dict(
-            desc='Type of FPGA to use if multiple available.'
-        ),
         'driver': dict(
-            desc='FPGA driver to use, default to Linux kernel driver.'),
+            desc='FPGA driver to use, default to Linux kernel driver.',
+            values=('aws_f1', 'xilinx_xrt')),
         'driver_version': dict(
             desc='FPGA driver version to use. If not specified, '
                  'use latest available.'

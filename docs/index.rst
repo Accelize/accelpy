@@ -83,6 +83,7 @@ Documentation
    getting_started
    configuration
    application_definition
+   application_container_image
    cli_help
    api
    changes
@@ -92,12 +93,14 @@ Documentation
    :caption: Provider examples
 
    provider_aws
+   provider_host
 
 .. toctree::
    :maxdepth: 2
    :caption: Application types
 
    application_container_service
+   application_kubernetes_node
 
 .. toctree::
    :maxdepth: 2

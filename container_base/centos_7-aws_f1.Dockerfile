@@ -1,6 +1,11 @@
 FROM centos:7
 SHELL ["/bin/bash", "-c"]
 
+# This dockerfile create an image containning:
+# - AWS FPGA runtimes
+# - Xilinx XRT runtimes (For AWS)
+# - An "appuser" user with "fpgauser" group
+
 RUN yum install -y epel-release && \
 yum install -y \
     gcc \
@@ -19,4 +24,6 @@ curl -s https://s3.amazonaws.com/aws-fpga-developer-ami/1.6.0/Patches/XRT_2018_3
 yum install -y /tmp/xrt_201830.2.1.0_7.6.1810-xrt.rpm && \
 yum install -y /tmp/xrt_201830.2.1.0_7.6.1810-aws.rpm && \
 rm -Rf /tmp/* && \
-rm -rf /var/cache/yum/*
+rm -rf /var/cache/yum/* && \
+groupadd -g 1001 fpgauser && \
+useradd -mN -u 1001 -g fpgauser appuser

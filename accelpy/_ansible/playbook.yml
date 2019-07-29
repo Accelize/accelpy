@@ -1,8 +1,18 @@
 # Playbook template
 - hosts: all
   become: true
+  vars_files:
+    - common.user_override.yml
+
   pre_tasks:
 
-    # Set some variables if defined
+    # Provider FPGA driver take precedence over application driver
+    - set_fact: fpga_driver="{{ provider_required_driver }}"
+      when: provider_required_driver != ""
+
+    # Pass driver name to Accelize DRM role
+    - set_fact: accelize_drm_driver_name="{{ fpga_driver }}"
+
+    # Pass driver versions to driver roles
     - set_fact: xilinx_xrt_version="{{ fpga_driver_version }}"
       when: fpga_driver_version is defined

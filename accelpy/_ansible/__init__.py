@@ -1,7 +1,7 @@
 # coding=utf-8
 """Ansible configuration"""
 from os import makedirs, fsdecode, scandir, listdir
-from os.path import join, dirname
+from os.path import join, dirname, splitext
 from sys import executable
 
 from accelpy._common import (
@@ -39,6 +39,7 @@ class Ansible:
         Generate Ansible configuration.
         """
         roles_local = dict()
+        yaml_files = dict()
 
         # Get sources
         for source_dir in self._source_dirs:
@@ -54,6 +55,10 @@ class Ansible:
                     elif name == 'roles' and entry.is_dir():
                         roles_local.update({role.lower(): join(entry.path, role)
                                             for role in listdir(entry.path)})
+
+                    # Get other Ansible configuration files
+                    elif splitext(entry.name)[1] == '.yml':
+                        yaml_files[entry.name] = entry.path
 
         # Filter roles
         roles = {name: path for name, path in roles_local.items()
@@ -114,6 +119,10 @@ class Ansible:
             [role for role in roles if not role.endswith('.init')])
 
         yaml_write(playbook, self._playbook)
+
+        # Copy other configuration files
+        for name, path in yaml_files.items():
+            symlink(path, join(self._config_dir, name))
 
     @classmethod
     def _executable(cls):

@@ -1,0 +1,13 @@
+---
+# Ansible user configuration
+# ==========================
+#
+# This file allow to override variables from Ansible configuration.
+
+# Enable OS security hardening
+# See "https://galaxy.ansible.com/dev-sec/os-hardening" for more information
+os_hardening: false
+
+# Enable SSH security hardening
+# See "https://galaxy.ansible.com/dev-sec/ssh-hardening" for more information
+ssh_hardening: false

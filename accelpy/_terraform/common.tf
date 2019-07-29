@@ -1,5 +1,18 @@
 /*
 Common configuration
+
+Provider variables
+==================
+
+Each provider specific terraform configuration file will need to define
+following variables:
+
+- provider_required_driver (string): Name of the driver to use on this provider.
+  Set to "" if the driver does not require a specific provider.
+- remote_os (string): Name of the OS to use on this provider.
+  Set to "" if this provider cannont provision a specific OS.
+
+
 */
 
 terraform {
@@ -14,12 +27,11 @@ variable "ansible" {
   description = "ansible-playbook command."
 }
 locals {
-
-  # Ansible Remote python to use: Python3 except on CentOS 7
-  ansible_python = local.remote_os == "centos_7" ? "/usr/bin/python" : "/usr/bin/python3"
+  # Ansible Remote python to use: Python3 except on CentOS 7, tries to use auto if OS is not specified.
+  ansible_python = local.remote_os == "" ? "auto" : (local.remote_os == "centos_7" ? "/usr/bin/python" : "/usr/bin/python3")
 
   # Ansible-playbook CLI with disabling SSH host key checking and ensuring using a fixed Python version
-  ansible = "ANSIBLE_REMOTE_USER=${local.remote_user} ${var.ansible} playbook.yml -e 'ansible_python_interpreter=${local.ansible_python}' -u ${local.remote_user} --private-key ${local.ssh_key_private_path} --extra-vars 'accelize_drm_driver_name=${local.accelize_drm_driver_name}' --extra-vars 'os_hardening=${local.os_hardening}' --extra-vars 'ssh_hardening=${local.ssh_hardening}'"
+  ansible = "ANSIBLE_REMOTE_USER=${local.remote_user} ${var.ansible} playbook.yml -e 'ansible_python_interpreter=${local.ansible_python}' -u ${local.remote_user} --private-key ${local.ssh_key_private_path} --extra-vars 'provider_required_driver=${local.provider_required_driver}'"
 }
 
 # Host FPGA configuration
@@ -82,18 +94,10 @@ output "remote_user" {
   value = local.remote_user
 }
 
-# Host OS
+# Host instantiation option. Theses options only applies when Accelpy is used
+# to provision new machines and not to change existing machines configuration.
 
 locals {
-  # Remote OS to use
-  remote_os = "centos_7"
-
-  # Enable OS security hardening
-  os_hardening = "false"
-
-  # Enable SSH security hardening
-  ssh_hardening = "false"
-
   # Size of the root volume (GiB)
   root_volume_size = "10"
 }

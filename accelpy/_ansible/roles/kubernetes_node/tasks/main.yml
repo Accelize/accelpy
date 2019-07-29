@@ -28,10 +28,10 @@
     url: "{{ item.url }}"
     dest: /etc/kubernetes/fpga-device-plugin.yaml
   with_items:
-    - required: "{{ (accelize_drm_driver_name == 'aws_f1') }}"
+    - required: "{{ (fpga_driver == 'aws_f1') }}"
       url: "https://raw.githubusercontent.com/Xilinx/FPGA_as_a_Service/\
             master/k8s-fpga-device-plugin/trunk/aws/aws-fpga-device-plugin.yaml"
-    - required: "{{ (accelize_drm_driver_name == 'xilinx_xrt') }}"
+    - required: "{{ (fpga_driver == 'xilinx_xrt') }}"
       url: "https://raw.githubusercontent.com/Xilinx/FPGA_as_a_Service/\
             master/k8s-fpga-device-plugin/trunk/fpga-device-plugin.yml"
   when: (master_node | bool) and (item.required | bool)

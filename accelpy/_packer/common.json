@@ -19,13 +19,9 @@
       ],
       "extra_arguments": [
         "--extra-vars",
-        "ansible_python_interpreter=/usr/bin/python",
+        "ansible_python_interpreter=auto",
         "--extra-vars",
-        "os_hardening={{user `os_hardening`}}",
-        "--extra-vars",
-        "ssh_hardening={{user `ssh_hardening`}}",
-        "--extra-vars",
-        "accelize_drm_driver_name={{user `accelize_drm_driver_name`}}"
+        "provider_required_driver={{user `provider_required_driver`}}"
       ]
     }
   ],

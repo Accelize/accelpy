@@ -25,10 +25,11 @@ dependencies:
     # vars:
     #   aws_fpga_allow_non_root: true
     #  aws_fpga_sdk_override_group: true
-    when: accelize_drm_driver_name == 'aws_f1'
+    when: fpga_driver == 'aws_f1'
 
   - role: 'accelize.xilinx_xrt'
-    when: accelize_drm_driver_name == 'xrt'
+    when: fpga_driver == 'xilinx_xrt'
+
 
   # Accelize DRM
   - accelize.accelize_drm

@@ -20,7 +20,8 @@ def mock_terraform_provider(source_dir, **variables):
         "host_public_ip": "127.0.0.1",
         "host_private_ip": "127.0.0.1",
         "remote_user": 'user',
-        "accelize_drm_driver_name": "driver"
+        "remote_os": "os",
+        "provider_required_driver": "driver"
     }
     json_write({
         "locals": local_variables
@@ -80,7 +81,7 @@ def test_terraform(tmpdir):
     output = terraform.output
     assert output['host_ssh_private_key'] == './ssh_private.pem'
     for key, value in local_variables.items():
-        if key not in ('accelize_drm_driver_name',):
+        if key not in ('provider_required_driver', 'remote_os',):
             assert output[key] == value, f'"{key}"" in output result'
 
     # Test: Refresh should not raise with state file

@@ -63,6 +63,8 @@ understand how to override the configuration.
 Terraform
 ~~~~~~~~~
 
+Terraform is used to deploy the infrastructure.
+
 The Terraform configuration is a set of files written in Terraform configuration
 language (Ending by `.tf`, `.tfvars`, `.tf.json` or `.tfvars.json`).
 
@@ -77,11 +79,18 @@ file that contain the part to override. The utility provides some overrides
 files to easily customize some common cases (Files ending with
 `.user_override.tf`)
 
+An override file is available to easily set provider independent options:
+
+:download:`common.user_override.tf <../accelpy/_terraform/common.user_override.tf>`.
+
 Finally, variables from user and application are added to a variable definition
 file (`generated.auto.tfvars.json`)
 
 Ansible
 ~~~~~~~
+
+Ansible is used to install required software on the infrastructure created by
+Terraform.
 
 The Ansible configuration is split in two parts:
 
@@ -101,8 +110,20 @@ Dependencies found in the `meta/main.yml` or roles are managed automatically:
    directory.
 *  Dependencies from Ansible Galaxy are automatically downloaded.
 
+It is possible to override Ansible variables to change software provisioning
+behavior.
+
+An override file is available to easily set common options:
+
+:download:`common.user_override.yml <../accelpy/_ansible/common.user_override.yml>`.
+
 Packer
 ~~~~~~
+
+Packed is used to create an image of the software configuration created by
+Ansible. This allow Terraform to deploy this image instead of fully
+reconfiguring the infrastructure with Ansible. This allow to deploy the
+infrastructure in a immutable way and reduce provisioning time.
 
 The Packer configuration is a single `template.json` and packer does not support
 any kind of overriding.

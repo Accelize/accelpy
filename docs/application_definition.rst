@@ -32,11 +32,9 @@ This section is a mapping of following key, values pairs:
   to filter configuration and use correct Ansible roles to deploy the
   application. For more information on each application type, see the
   "application type" section of the right menu. Predefined application types
-  are:
-
-  * `container_service`: Container service application type.
-
-* `entry_point` (string): Application entry point override.
+  are: `container_service`, `kubernetes_node`.
+* `variables` (mapping of strings): Application type specific variables. See the
+  application type documentation for more information.
 
 Example:
 
@@ -46,6 +44,9 @@ Example:
       name: my_application
       version: 1.0.2
       type: container_service
+      variables:
+        var1: 1
+        var2: 2
 
 `package` section
 ~~~~~~~~~~~~~~~~~
@@ -125,11 +126,9 @@ device(s).
   use to program the FPGA. Depending the provider this can be an ID, a path or
   an URL. If multiple FPGA are required, must be a list of FPGA bitstream (One
   for each FPGA slot).
-* `type` (string): Type of FPGA to use if multiple available on the provider in
-  use. If not specified, use the default value for the provider in use if any.
 * `driver` (string): The FPGA driver to use. If not specified, default to the
-  Linux Kernel driver. Possible values : `xocl` (Xilinx XOCL),
-  `xdma` (Xilinx XDMA).
+  Linux Kernel driver or the provider specific driver.
+  Possible values : `aws_f1` (AWS F1 instances only), `xilinx_xrt` (Xilinx XRT).
 * `driver_version` (string): The version of the FPGA driver to use. If not
   specified, use the latest version available.
 * `count` (int): The number of FPGA devices required to run the application.
@@ -152,7 +151,8 @@ This section define the DRM service configuration.
   using the Accelize DRM library (See
   `Accelize documentation <https://www.accelize.com/docs>`_). `false` if not
   specified.
-* `conf` (dict): Content of Accelize DRM `conf.json` (YAML or JSON formatted).
+* `conf` (mapping of strings): Content of Accelize DRM `conf.json`
+  (YAML or JSON formatted).
 
 .. code-block::yaml
    :caption: Passing the Accelize DRM conf.json: YAML formatted
@@ -183,6 +183,10 @@ This section define the DRM service configuration.
           "boardType": "ISV custom data"
         }
       }
+
+.. warning:: To use the Accelize DRM service, the application must not tries to
+             manage the programmed FPGA bitstream. The service will program the
+             FPGA itself before licensing it.
 
 Provider specific override
 ~~~~~~~~~~~~~~~~~~~~~~~~~~

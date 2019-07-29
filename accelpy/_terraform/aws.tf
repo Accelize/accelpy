@@ -12,16 +12,14 @@ provider "aws" {
 locals {
   # Define instance type based on required FPGA count
   instances_types = {
-    # Note: The 0 FPGA instance type is only intended to lower cost testing
-    "0" = "c5.xlarge"
     "1" = "f1.2xlarge"
     "2" = "f1.4xlarge"
     "8" = "f1.16xlarge"
   }
   instance_type = [for fpga_count, type in local.instances_types : type if fpga_count >= var.fpga_count][0]
 
-  # Driver name to use with Accelize DRM service
-  accelize_drm_driver_name = "aws_f1"
+  # AWS use its specific FPGA driver
+  provider_required_driver = "aws_f1"
 
   # AMI Information for supported OS
   ami_users = {
@@ -39,6 +37,9 @@ locals {
     "ubuntu_bionic" = "ubuntu/images/hvm-ssd/ubuntu-bionic-18.04-amd64-server-*"
     "ubuntu_xenial" = "ubuntu/images/ebs-ssd/ubuntu-xenial-16.04-amd64-server-*"
   }
+
+  # Use CentOS 7 because the only one that wrok with AWS FPGA driver
+  remote_os = "centos_7"
 }
 
 # Instance image and sudo user name

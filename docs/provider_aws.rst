@@ -4,6 +4,12 @@ AWS EC2
 The utility is shipped with an AWS example that provision the application on
 a single EC2 instance.
 
+.. warning:: AWS EC2 currently only support FPGA properly with the following
+             software configuration:
+
+             * CentOS 7
+             * Xilinx XRT 2018.3 2.1.0
+
 Region selection
 ----------------
 

@@ -355,6 +355,7 @@ class Host:
                 accelize_drm_conf_src=self._accelize_drm_conf_json,
                 accelize_drm_cred_src=self._accelize_drm_cred_json
             )
+            variables.update(self._app('application', 'variables'))
 
             self._ansible_config = Ansible(
                 config_dir=self._config_dir, provider=self._provider,
