@@ -52,16 +52,6 @@ class Utility:
         return cls.__name__.lower()
 
     @classmethod
-    def _plugins_dir(cls):
-        """
-        Utility plugin directory.
-
-        Returns:
-            str: Plugin directory.
-        """
-        return join(cls._install_dir(), 'plugins')
-
-    @classmethod
     def _install_dir(cls):
         """
         Install directory.
@@ -110,7 +100,7 @@ class Utility:
                 checksum_raw, compressed, last_release['archive_name'])
 
             # Ensure directories exists
-            makedirs(cls._plugins_dir(), exist_ok=True)
+            makedirs(cls._install_dir(), exist_ok=True)
 
             # Lazy import package that are required only on install
             from io import BytesIO

@@ -2,7 +2,7 @@
 """Accelpy
 
 
-Copyright 2018 Accelize
+Copyright 2019 Accelize
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -16,8 +16,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
-__version__ = '1.0.0-beta.9'
-__copyright__ = "Copyright 2018 Accelize"
+__version__ = '1.0.0-beta.10'
+__copyright__ = "Copyright 2019 Accelize"
 __licence__ = "Apache 2.0"
 
 from sys import version_info as _py

@@ -34,7 +34,7 @@ def parametrize_application_yml(argvalues, ids):
     with scandir(dirname(realpath(__file__))) as entries:
         for entry in entries:
             name, ext = splitext(entry.name)
-            if ext == '.yml':
+            if ext == '.yml' and name.startswith('test_'):
                 app = Application(entry.path)
                 if 'test' not in app._definition and not app.environments:
                     continue

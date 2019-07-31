@@ -171,7 +171,7 @@ class Ansible:
         """
         if roles:
             self._ansible('install', '--force-with-deps',
-                          *roles, utility='galaxy')
+                          *roles, utility='galaxy', pipe_stdout=True)
 
     @classmethod
     def playbook_exec(cls):

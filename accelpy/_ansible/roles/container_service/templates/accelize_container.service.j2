@@ -5,10 +5,10 @@ After=accelize_drm.service
 [Service]
 {% if rootless %}
 User=appuser
-ExecStart=/usr/bin/podman run --name accelize_container --rm --userns=keep-id --env FPGA_SLOTS={{ fpga_slots|join(',') }} {{ firewall_rules | publish_ports(redirect=True) }} {{ fpga_devices_list["stdout"] | publish_devices(privileged=True) }} {{ podman_image_info["image"][0]["Id"] }}
+ExecStart=/usr/bin/podman run --name accelize_container --rm --userns=keep-id --env FPGA_SLOTS={{ fpga_slots|join(',') }} {{ firewall_rules | publish_ports(redirect=True) }} {% if accelize_drm_disabled %}-v /home/appuser/.accelize_drm/cred.json:/home/appuser/.accelize_drm/cred.json:ro{% endif %} {{ fpga_devices_list["stdout"] | publish_devices(privileged=True) }} {{ podman_image_info["image"][0]["Id"] }}
 ExecStop=/usr/bin/podman stop accelize_container
 {% else %}
-ExecStart=/usr/bin/docker run --name accelize_container --rm --user 1001:1001 --env FPGA_SLOTS={{ fpga_slots|join(',') }} {{ firewall_rules | publish_ports }} {{ fpga_devices_list["stdout"] | publish_devices }} {{ docker_image_info["image"]["Id"] }}
+ExecStart=/usr/bin/docker run --name accelize_container --rm --user 1001:1001 --env FPGA_SLOTS={{ fpga_slots|join(',') }} {{ firewall_rules | publish_ports }} {% if accelize_drm_disabled %}-v /root/.accelize_drm/cred.json:/root/.accelize_drm/cred.json:ro{% endif %} {{ fpga_devices_list["stdout"] | publish_devices }} {{ docker_image_info["image"]["Id"] }}
 ExecStop=/usr/bin/docker stop accelize_container
 {% endif %}
 

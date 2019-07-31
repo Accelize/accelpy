@@ -60,7 +60,8 @@ def publish_devices(path_list, *_, device=False, privileged=False, **__):
     Returns:
         str: arguments
     """
-    path_list = path_list.strip().splitlines()
+    path_list = [path for path in path_list.strip().splitlines()
+                 if path.lstrip('/').split('/', 1)[0] in ('dev', 'sys')]
     args_list = []
     prefixes = ('/dev/dri', '/sys/devices/pci0000:00')
 

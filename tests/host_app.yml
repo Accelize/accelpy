@@ -1,0 +1,30 @@
+---
+application:
+  name: existing_host_test
+  type: container_service
+  version: 1.0.0
+
+firewall_rules:
+  - start_port: 8080
+    end_port: 8080
+    protocol: tcp
+    direction: ingress
+
+fpga:
+  host,aws-eu-west-1:
+    image: agfi-071909cc191313a51
+    driver: aws_f1
+
+package:
+  name: accelize/accelpy-ci
+  version: container_service
+  type: container_image
+
+accelize_drm:
+  conf:
+    design:
+      boardType: DRM_100
+    licensing:
+      url: https://master.metering.accelize.com
+    drm:
+      frequency_mhz: 100

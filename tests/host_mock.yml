@@ -1,0 +1,17 @@
+---
+application:
+  name: existing_host_mock
+  type: container_service
+  version: 1.0.0
+
+fpga:
+  aws,eu-west-1:
+    image: agfi-071909cc191313a51
+
+package:
+  aws,eu-west-1:
+    name: ami-0ff760d16d9497662
+  type: vm_image
+
+accelize_drm:
+  use_service: false

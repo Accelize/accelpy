@@ -73,7 +73,7 @@ PACKAGE_INFO['command_options']['build_sphinx'] = {
     'project': ('setup.py', PACKAGE_INFO['name'].capitalize()),
     'version': ('setup.py', PACKAGE_INFO['version']),
     'release': ('setup.py', PACKAGE_INFO['version']),
-    'copyright': ('setup.py', '2018-%s, %s' % (
+    'copyright': ('setup.py', '2019-%s, %s' % (
         datetime.now().year, PACKAGE_INFO['author']))}
 
 # Runs setup

@@ -8,7 +8,7 @@ locals {
   # IP addresses
   #
   # Fill with the list of hosts IP addresses
-  host_ip = ["127.0.0.1"]
+  host_ip = ["1.2.3.4"]
 
   # SSH connection
   # ==============

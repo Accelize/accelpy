@@ -1,7 +1,7 @@
 # coding=utf-8
 """Terraform configuration"""
 from json import loads
-from os import makedirs, remove
+from os import makedirs, remove, environ
 from os.path import join, isfile
 from time import sleep
 
@@ -42,6 +42,10 @@ class Terraform(Utility):
         Utility.__init__(self, *args, **kwargs)
         self._initialized = False
 
+        # Initialize plugin cache directory
+        self._plugin_cache_dir = join(self._install_dir(), 'plugins')
+        makedirs(self._plugin_cache_dir, exist_ok=True)
+
     def create_configuration(self):
         """
         Generate Terraform configuration.
@@ -58,10 +62,6 @@ class Terraform(Utility):
         used. Directories are checked in the listed order to allow user to
         override default configuration easily.
         """
-        # Symlink common plugins dir to to avoid to re-download them each time
-        dot_dir = join(self._config_dir, '.terraform')
-        makedirs(dot_dir, exist_ok=True)
-        symlink(self._plugins_dir(), join(dot_dir, 'plugins'))
         # Link configuration files matching provider and options
         for name, src_path in self._list_sources():
             dst_path = join(self._config_dir, name)
@@ -83,6 +83,18 @@ class Terraform(Utility):
             tf_vars, join(self._config_dir, 'generated.auto.tfvars.json'))
 
     @property
+    def _exec_env(self):
+        """
+        Terraform execution environment.
+
+        Returns:
+            dict: Environment variables.
+        """
+        env = environ.copy()
+        env['TF_PLUGIN_CACHE_DIR'] = self._plugin_cache_dir
+        return env
+
+    @property
     def _no_color(self):
         """
         Configure color.
@@ -98,7 +110,8 @@ class Terraform(Utility):
         Initialize Terraform
         """
         if not self._initialized:
-            self._exec('init', self._no_color, '-input=false', pipe_stdout=True)
+            self._exec('init', self._no_color, '-input=false', pipe_stdout=True,
+                       env=self._exec_env)
             self._initialized = True
 
     def plan(self):
@@ -111,7 +124,7 @@ class Terraform(Utility):
         """
         self._init()
         return self._exec('plan', self._no_color, '-input=false', '-out=tfplan',
-                          pipe_stdout=True).stdout
+                          pipe_stdout=True, env=self._exec_env).stdout
 
     def apply(self, quiet=False, retries=10, delay=1.0):
         """
@@ -134,7 +147,7 @@ class Terraform(Utility):
 
         while True:
             try:
-                self._exec(*args, pipe_stdout=quiet)
+                self._exec(*args, pipe_stdout=quiet, env=self._exec_env)
                 break
             except RuntimeException as exception:
                 if failures > retries:
@@ -163,7 +176,7 @@ class Terraform(Utility):
         """
         self._init()
         self._exec('destroy', self._no_color, '-auto-approve',
-                   pipe_stdout=quiet)
+                   pipe_stdout=quiet, env=self._exec_env)
 
     def refresh(self, quiet=False):
         """
@@ -176,7 +189,7 @@ class Terraform(Utility):
         if self._has_state():
             self._init()
             self._exec('refresh', self._no_color, '-input=false', '.',
-                       pipe_stdout=quiet)
+                       pipe_stdout=quiet, env=self._exec_env)
 
     @property
     def output(self):
@@ -187,7 +200,7 @@ class Terraform(Utility):
             dict: Configuration output.
         """
         process = self._exec('output', self._no_color, '-json',
-                             pipe_stdout=True)
+                             pipe_stdout=True, env=self._exec_env)
         out = loads(process.stdout.strip())
         return {key: out[key]['value'] for key in out}
 
@@ -198,7 +211,8 @@ class Terraform(Utility):
         Returns:
             list of str: List of resources.
         """
-        result = self._exec('state', 'list', pipe_stdout=True, check=False)
+        result = self._exec('state', 'list', pipe_stdout=True, check=False,
+                            env=self._exec_env)
 
         if result.returncode:
             # Error because no state file, return empty list
