@@ -10,6 +10,21 @@ from accelpy.exceptions import ConfigurationException
 CONFIG_DIR = join(HOME_DIR, 'hosts')
 
 
+def _iter_hosts_names():
+    """
+    Iter over existing hosts configurations names.
+
+    Returns:
+        generator of str: Generator of host configuration names.
+    """
+    try:
+        for entry in scandir(CONFIG_DIR):
+            if entry.is_dir():
+                yield entry.name
+    except OSError:
+        return
+
+
 def iter_hosts():
     """
     Iter over existing hosts configurations.
@@ -18,12 +33,8 @@ def iter_hosts():
         generator of accelpy._manager.Host: Generator of Host
         configurations.
     """
-    try:
-        for entry in scandir(CONFIG_DIR):
-            if entry.is_dir():
-                yield Host(name=entry.name)
-    except OSError:
-        return
+    for name in _iter_hosts_names():
+        yield Host(name=name)
 
 
 class Host:

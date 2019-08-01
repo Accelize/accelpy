@@ -28,4 +28,11 @@ locals {
   /*
   ansible_python = "auto"
   */
+
+  # By default a password may or may not be asked to sudo on the remote host.
+  # It is possible to force Ansible to ask for the sudo password by uncommenting
+  # the following value:
+  /*
+  ask_sudo_pass = true
+  */
 }

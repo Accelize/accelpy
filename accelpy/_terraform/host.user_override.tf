@@ -16,7 +16,7 @@ locals {
   # A key pair is required to access the instance using SSH.
   #
   # Fill with the private key PEM file path to use
-  ssh_key_pem = "~/.ssh/id_rsa"
+  ssh_key_pem = ""
 
   # Fill with the user name to use to connect to SSH
   remote_user = "user"

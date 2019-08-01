@@ -40,6 +40,9 @@ locals {
 
   # Use CentOS 7 because the only one that wrok with AWS FPGA driver
   remote_os = "centos_7"
+
+  # AWS AMI does not require sudo password by default
+  ask_sudo_pass = false
 }
 
 # Instance image and sudo user name

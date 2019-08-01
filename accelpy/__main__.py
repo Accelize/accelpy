@@ -180,8 +180,8 @@ def _action_list(_):
     Returns:
         str: Hosts list.
     """
-    from accelpy import iter_hosts
-    return '\n'.join(host.name for host in iter_hosts())
+    from accelpy._host import _iter_hosts_names
+    return '\n'.join(_iter_hosts_names())
 
 
 def _action_lint(args):
@@ -210,13 +210,14 @@ def _run_command():
     environ['ACCELPY_CLI'] = 'True'
 
     # List existing hosts
-    from accelpy import iter_hosts
-    hosts_names = tuple(host.name for host in iter_hosts())
+    from accelpy import __version__
+    from accelpy._host import _iter_hosts_names
+    hosts_names = tuple(_iter_hosts_names())
 
     # Creates command line argument parser
     parser = ArgumentParser(
         prog='accelpy',
-        description='accelpy command line utility.')
+        description=f'Accelpy {__version__}')
 
     sub_parsers = parser.add_subparsers(
         dest='action', title='Commands',

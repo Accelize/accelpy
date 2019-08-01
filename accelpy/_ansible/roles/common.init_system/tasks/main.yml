@@ -4,6 +4,7 @@
     update_cache: true
   retries: 10
   delay: 1
+  changed_when: false
   when: ansible_os_family == 'Debian'
 
 - name: Ensure system is up to date

@@ -6,6 +6,9 @@ locals {
   # IP addresses, defined in user_override
   host_ip = []
 
+  # Needs password to to sudo
+  ask_sudo_pass = true
+
   # Remote user, defined in user_override
   remote_user = ""
 
