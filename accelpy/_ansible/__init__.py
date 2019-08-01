@@ -106,7 +106,7 @@ class Ansible:
                     galaxy_roles.add(dep)
 
         # Install dependencies from Ansible Galaxy
-        self.galaxy_install(galaxy_roles)
+        self.galaxy_install(galaxy_roles, roles_path=role_dir)
 
         # Create playbook
         playbook = yaml_read(playbook_src)
@@ -159,19 +159,24 @@ class Ansible:
         """
         return call(
             [executable, f"{self._executable()}-{utility}" if utility else
-             self._executable] + list(args), cwd=self._config_dir, check=check,
-            pipe_stdout=pipe_stdout, **run_kwargs)
+             self._executable] + list(arg for arg in args if arg),
+            cwd=self._config_dir, check=check, pipe_stdout=pipe_stdout,
+            **run_kwargs)
 
-    def galaxy_install(self, roles):
+    def galaxy_install(self, roles, roles_path=None, force=False):
         """
         Install role from Ansible galaxy.
 
         Args:
             roles (iterable of str): Roles to install.
+            roles_path (str): Path to the directory containing roles.
+            force (bool): If True, force to reinstall roles.
         """
         if roles:
-            self._ansible('install', '--force-with-deps',
-                          *roles, utility='galaxy', pipe_stdout=True)
+            self._ansible(
+                'install', f'--roles-path={roles_path}' if roles_path else '',
+                '--force-with-deps' if force else '',
+                *roles, utility='galaxy', pipe_stdout=True)
 
     @classmethod
     def playbook_exec(cls):

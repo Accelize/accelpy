@@ -45,6 +45,9 @@ PACKAGE_INFO = dict(
     install_requires=[
         'requests>=2.20.0',
         'ansible>=2.8',
+        'argcomplete>=1.10',
+        'colorama',
+        # 'mitogen>=0.2.7',
         'awscli>=1.16'  # To remove once Terraform support spot instance tagging
     ],
     setup_requires=['setuptools'],

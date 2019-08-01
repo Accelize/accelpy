@@ -1,33 +1,5 @@
 ---
 
-- name: Ensure FPGA user group exists
-  group:
-    name: fpgauser
-    state: present
-
-- name: Ensure application user exists ans is in FPGA user group
-  user:
-    name: appuser
-    shell: /bin/bash
-    group: fpgauser
-    create_home: true
-
-- name: Ensure .accelize/drm directory exists in appuser home
-  file:
-    path: /home/appuser/.accelize_drm
-    mode: '0600'
-    state: directory
-  when: (rootless | bool) and (accelize_drm_disabled | bool)
-
-- name: Ensure appuser can access to Accelize credentials
-  copy:
-    src: /root/.accelize_drm/cred.json
-    dest: /home/appuser/.accelize_drm/cred.json
-    owner: appuser
-    group: appuser
-    mode: '0600'
-  when: (rootless | bool) and (accelize_drm_disabled | bool)
-
 - name: List FPGA devices that can be accessed by FPGA user group
   command: find / -ignore_readdir_race -group fpgauser
   register: fpga_devices_list

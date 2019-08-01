@@ -1,6 +1,6 @@
 ---
 application:
-  name: existing_host_mock
+  name: existing_host_test
   type: container_service
   version: 1.0.0
 

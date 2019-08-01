@@ -18,9 +18,12 @@ def iter_hosts():
         generator of accelpy._manager.Host: Generator of Host
         configurations.
     """
-    for entry in scandir(CONFIG_DIR):
-        if entry.is_dir():
-            yield Host(name=entry.name)
+    try:
+        for entry in scandir(CONFIG_DIR):
+            if entry.is_dir():
+                yield Host(name=entry.name)
+    except OSError:
+        return
 
 
 class Host:
@@ -402,17 +405,31 @@ class Host:
             # Lazy import: May not be used all time
             from accelpy._terraform import Terraform
             from accelpy._ansible import Ansible
+            # TODO: Test and enable once Ansible 2.8 is supported
+            # import ansible_mitogen.plugins.strategy as strategy
 
             no_color_mode = no_color()
             debug_mode = debug()
             ansible_env = ' '.join(f'{key}={value}' for key, value in {
+
+                # Reduce output except in debug mode
                 'ANSIBLE_DISPLAY_SKIPPED_HOSTS': debug_mode,
                 'ANSIBLE_DISPLAY_OK_HOSTS': debug_mode,
                 'ANSIBLE_HOST_KEY_CHECKING': False,
                 'ANSIBLE_DEPRECATION_WARNINGS': debug_mode,
                 'ANSIBLE_ACTION_WARNINGS': debug_mode,
+
+                # Enable/Disable color outputs (May be useful in some CI env)
                 'ANSIBLE_FORCE_COLOR': not no_color_mode,
-                'ANSIBLE_NOCOLOR': no_color_mode
+                'ANSIBLE_NOCOLOR': no_color_mode,
+
+                # Speed up Ansible
+                'ANSIBLE_PIPELINING': True,
+                'ANSIBLE_SSH_ARGS':
+                    '"-o ControlMaster=auto -o ControlPersist=60s '
+                    '-o PreferredAuthentications=publickey"',
+                # 'ANSIBLE_STRATEGY': 'mitogen_linear',
+                # 'ANSIBLE_STRATEGY_PLUGINS': strategy.__path__[0],
             }.items())
 
             variables = dict(

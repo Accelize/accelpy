@@ -24,3 +24,16 @@
   retries: 10
   delay: 1
   when: ansible_os_family == 'RedHat'
+
+- name: Ensure FPGA user group exists
+  group:
+    name: fpgauser
+    state: present
+
+- name: Ensure application user exists and is in FPGA user group
+  user:
+    name: appuser
+    shell: /bin/bash
+    groups: fpgauser
+    append: true
+    create_home: true

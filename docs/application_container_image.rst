@@ -17,7 +17,7 @@ documentation can help to start with container images:
           libraries cannot be accessed from the container directly.
 
 Accelize base images
--------------------
+--------------------
 
 Accelize provides some container base images that can be used as base to create
 your own container images.

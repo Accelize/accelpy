@@ -1,17 +1,24 @@
 ---
 
-- name: Ensure kubectl has bash completion
+- name: Ensure bash-completion package is present
+  package:
+    name: bash-completion
+    state: present
+  retries: 10
+  delay: 1
+
+- name: Ensure kubectl bash completion is enabled for current user
   lineinfile:
     path: "/home/{{ ansible_user }}/.bashrc"
     line: source <(kubectl completion bash)
     state: present
 
-- name: Ensure ".kube" directory exists in user home directory
+- name: Ensure ".kube" directory exists in current user home directory
   file:
     path: "/home/{{ ansible_user }}/.kube"
     state: directory
 
-- name: 'Ensure "{{ ansible_user }}" user has read access to configuration'
+- name: Ensure current user has read access to the K8s configuration
   file:
     path: /etc/kubernetes/admin.conf
     group: "{{ ansible_user }}"
@@ -26,7 +33,7 @@
 - name: Ensure FPGA Kubernetes device plugin is present
   get_url:
     url: "{{ item.url }}"
-    dest: /etc/kubernetes/fpga-device-plugin.yaml
+    dest: /etc/kubernetes/fpga-device-plugin.yml
   with_items:
     - required: "{{ (fpga_driver == 'aws_f1') }}"
       url: "https://raw.githubusercontent.com/Xilinx/FPGA_as_a_Service/\
@@ -39,5 +46,5 @@
   delay: 1
 
 - name: Ensure FPGA Kubernetes device plugin is enabled as deamonset
-  command: kubectl create -f /etc/kubernetes/fpga-device-plugin.yaml
+  command: kubectl create -f /etc/kubernetes/fpga-device-plugin.yml
   when: master_node | bool

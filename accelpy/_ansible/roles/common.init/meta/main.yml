@@ -1,7 +1,7 @@
 ---
 dependencies:
-  # System update
-  - role: common.update_system
+  # System initialization
+  - role: common.init_system
 
   # Security hardening
   - role: dev-sec.os-hardening
@@ -12,24 +12,27 @@ dependencies:
 
   - role: dev-sec.ssh-hardening
     vars:
-      ssh_allow_users: "{{ remote_user }}"
+      ssh_allow_users: "{{ ansible_user }}"
     when: ssh_hardening | bool
 
   # System reboot
   - role: common.reboot_system
 
   # FPGA drivers
-
   - role: 'accelize.aws_fpga'
-    # TODO: Disabled, crash in AWS Udev script
-    # vars:
-    #   aws_fpga_allow_non_root: true
-    #  aws_fpga_sdk_override_group: true
+    vars:
+      xilinx_xrt_version: "{{ fpga_driver_version }}"
+      # TODO: Disabled, crash in AWS Udev script on CentOS
+      # aws_fpga_allow_non_root: true
+      # aws_fpga_sdk_override_group: true
     when: fpga_driver == 'aws_f1'
 
   - role: 'accelize.xilinx_xrt'
+    vars:
+      xilinx_xrt_version: "{{ fpga_driver_version }}"
     when: fpga_driver == 'xilinx_xrt'
 
-
   # Accelize DRM
-  - accelize.accelize_drm
+  - role: accelize.accelize_drm
+    vars:
+      accelize_drm_driver_name: "{{ fpga_driver }}"

@@ -25,6 +25,9 @@ from accelpy.exceptions import (
     RuntimeException as _RuntimeException,
     ConfigurationException as _ConfigurationException)
 
+# Cached value storage
+_cache = dict()
+
 #: User configuration directory
 HOME_DIR = _expanduser('~/.accelize')
 
@@ -142,8 +145,10 @@ def call(command, check=True, pipe_stdout=False, **run_kwargs):
     result = _run(command, universal_newlines=True, stderr=_PIPE, **run_kwargs)
 
     if check and result.returncode:
-        raise _RuntimeException((result.stderr or result.stdout or
-                                'See stdout for more information.').strip())
+        raise _RuntimeException('\n'.join((
+            'Error while running:', ' '.join(command), '',
+            (result.stderr or result.stdout or
+             warn('See stdout for more information.')).strip())))
 
     return result
 
@@ -273,3 +278,56 @@ def debug():
         bool: True if debug mode.
     """
     return bool(_environ.get("ACCELPY_DEBUG", False))
+
+
+def color_str(text, color):
+    """
+    Format text as colored output.
+
+    Args:
+        text (str): text.
+        color (str): color.
+
+    Returns:
+        str: Colored text.
+    """
+    # Disable color output if not in CLI mode or if color is disabled
+    if not bool(_environ.get("ACCELPY_CLI", False)) or no_color():
+        return text
+
+    # Lazy import colorama only if required
+    from colorama import init, Fore
+
+    # Init colorama if not already done
+    if _cache.get('colorama_initialized'):
+        init()
+        _cache['colorama_initialized'] = True
+
+    # Return colored output
+    return f'{getattr(Fore, color)}{text}{Fore.RESET}'
+
+
+def error(text):
+    """
+    Return error colored output.
+
+    Args:
+        text (str): text.
+
+    Returns:
+        str: Colored text.
+    """
+    return color_str(text, 'RED')
+
+
+def warn(text):
+    """
+    Return warning colored output.
+
+    Args:
+        text (str): text.
+
+    Returns:
+        str: Colored text.
+    """
+    return color_str(text, 'YELLOW')

@@ -6,6 +6,8 @@
   vars:
     package_name: accelize/accelpy-ci
     package_version: container_service
+    accelize_drm_disabled: false
+    accelize_drm_cred_dst: /home/appuser/.accelize_drm/cred.json
     firewall_rules:
       - start_port: 8080
         end_port: 8080

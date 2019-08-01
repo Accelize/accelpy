@@ -19,11 +19,18 @@ The installation is performed using Pip:
 
     pip3 install accelpy
 
-Ansible and all required Python packages are installed automatically by Pip.
+To enable bash autocompletion, add the following line in your `~/.bashrc`:
 
-HashiCorp utilities (Terraform & Packer) are managed automatically by accelpy.
-It ensures that the version used is up to date, downloads and installs the tool
-if necessary after checking its signature and integrity.
+.. code-block::bash
+
+    eval "$(register-python-argcomplete accelpy)"
+
+.. note:: Ansible is installed automatically by Pip.
+
+          HashiCorp utilities (Terraform & Packer) are managed automatically by
+          accelpy. It ensures that the version used is up to date, downloads and
+          installs the tool if necessary after checking its signature and
+          integrity.
 
 Application definition
 ----------------------

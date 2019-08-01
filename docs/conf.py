@@ -30,6 +30,7 @@ release = SPHINX_INFO['release'][1]
 # -- Dynamically generates documentation from CLI help ----------
 
 from subprocess import check_output
+from os import environ
 
 
 def _generates_rst(rst_path, content):
@@ -65,10 +66,15 @@ def generates_cli_help(rst_path):
         'for each command.',
         '']
 
+    # Disable colors and warnings in help
+    env = environ.copy()
+    env['ACCELPY_GENERATE_CLI_DOC'] = 'True'
+    env['ACCELPY_NO_COLOR'] = 'True'
+
     for command in commands:
         cli_help = check_output(
             cli + ([command, '-h'] if command else ['-h']),
-            universal_newlines=True)
+            universal_newlines=True, env=env)
         title = 'accelpy%s' % ((' %s' % command) if command else '')
         content += [title, '-' * len(title), '\n| ' +
                     cli_help.replace('\n', '\n| '), '']

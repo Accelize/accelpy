@@ -4,8 +4,8 @@ Kubernetes Node
 The application is one or more preconfigured Kubernetes Nodes with a master
 node.
 
-.. notes:: Currently the application provision only the application as a single
-           node/master.
+.. note:: Currently the application provision only the application as a single
+          node/master.
 
 Container configuration
 -----------------------

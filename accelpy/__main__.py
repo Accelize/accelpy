@@ -1,4 +1,5 @@
 #! /usr/bin/env python3
+# PYTHON_ARGCOMPLETE_OK
 # coding=utf-8
 """Command line interface"""
 
@@ -201,7 +202,16 @@ def _run_command():
     """
     Command line entry point
     """
+    from os import environ
     from argparse import ArgumentParser
+    from argcomplete import autocomplete
+
+    # Mark as CLI
+    environ['ACCELPY_CLI'] = 'True'
+
+    # List existing hosts
+    from accelpy import iter_hosts
+    hosts_names = tuple(host.name for host in iter_hosts())
 
     # Creates command line argument parser
     parser = ArgumentParser(
@@ -230,15 +240,19 @@ def _run_command():
              '"~./accelize" directory.')
 
     name_help = 'Configuration name to use.'
+    if not hosts_names and not environ.get('ACCELPY_GENERATE_CLI_DOC'):
+        from accelpy._common import warn
+        name_help += warn(' No configuration found, run "accelpy init" first.')
+
     description = 'Plan the host infrastructure creation and show details.'
     action = sub_parsers.add_parser('plan', help=description,
                                     description=description)
-    action.add_argument('--name', '-n', help=name_help)
+    action.add_argument('--name', '-n', help=name_help, choices=hosts_names)
 
     description = 'Create the host infrastructure.'
     action = sub_parsers.add_parser(
         'apply', help=description, description=description)
-    action.add_argument('--name', '-n', help=name_help)
+    action.add_argument('--name', '-n', help=name_help, choices=hosts_names)
     action.add_argument(
         '--quiet', '-q', action='store_true',
         help='If specified, hide outputs.')
@@ -246,7 +260,7 @@ def _run_command():
     description = 'Create a virtual machine image of the configured host.'
     action = sub_parsers.add_parser(
         'build', help=description, description=description)
-    action.add_argument('--name', '-n', help=name_help)
+    action.add_argument('--name', '-n', help=name_help, choices=hosts_names)
     action.add_argument(
         '--update_application', '-u', action='store_true',
         help='If applicable, update the application definition Yaml file to '
@@ -259,7 +273,7 @@ def _run_command():
     description = 'Destroy the host infrastructure.'
     action = sub_parsers.add_parser(
         'destroy', help=description, description=description)
-    action.add_argument('--name', '-n', help=name_help)
+    action.add_argument('--name', '-n', help=name_help, choices=hosts_names)
     action.add_argument(
         '--quiet', '-q', action='store_true',
         help='If specified, hide outputs.')
@@ -270,22 +284,22 @@ def _run_command():
     description = 'Print the host SSH private key path.'
     action = sub_parsers.add_parser(
         'ssh_private_key', help=description, description=description)
-    action.add_argument('--name', '-n', help=name_help)
+    action.add_argument('--name', '-n', help=name_help, choices=hosts_names)
 
     description = 'Print the name of the user to use to connect with SSH'
     action = sub_parsers.add_parser(
         'ssh_user', help=description, description=description)
-    action.add_argument('--name', '-n', help=name_help)
+    action.add_argument('--name', '-n', help=name_help, choices=hosts_names)
 
     description = 'Print the private IP address.'
     action = sub_parsers.add_parser(
         'private_ip', help=description, description=description)
-    action.add_argument('--name', '-n', help=name_help)
+    action.add_argument('--name', '-n', help=name_help, choices=hosts_names)
 
     description = 'Print the public IP address.'
     action = sub_parsers.add_parser(
         'public_ip', help=description, description=description)
-    action.add_argument('--name', '-n', help=name_help)
+    action.add_argument('--name', '-n', help=name_help, choices=hosts_names)
 
     description = 'List available host configurations.'
     sub_parsers.add_parser(
@@ -296,11 +310,15 @@ def _run_command():
         'lint', help=description, description=description)
     action.add_argument('file', help='Path to file to lint.')
 
+    # Enable autocompletion
+    autocomplete(parser)
+
     # Get arguments and call function
     args = parser.parse_args()
     action = args.action
     if not action:
-        parser.error('A command is required.')
+        from accelpy._common import error
+        parser.error(error('A command is required.'))
 
     # Disables Python warnings
     from warnings import filterwarnings
@@ -321,9 +339,11 @@ def _run_command():
         parser.exit()
 
     except (AccelizeException, OSError) as exception:
-        from accelpy._common import debug
+        from accelpy._common import debug, error
         if not debug():
-            parser.error(str(exception))
+            message = str(exception).split('\n', 1)
+            message[0] = error(message[0])
+            parser.error('\n'.join(message))
         raise
 
     except KeyboardInterrupt:
