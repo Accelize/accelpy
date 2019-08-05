@@ -145,9 +145,10 @@ def test_host_mocked(tmpdir):
         # Create the existing host Terraform configuration override
         user_config.join('host.user_override.tf').write_text('\n'.join((
             'locals {',
-            f'  host_ip     = ["{mocked_host.public_ip}"]',
-            f'  ssh_key_pem = "{mocked_host.ssh_private_key}"',
-            f'  remote_user = "{mocked_host.ssh_user}"',
+            f'  host_ip      = ["{mocked_host.public_ip}"]',
+            f'  ssh_key_pem  = "{mocked_host.ssh_private_key}"',
+            f'  remote_user  = "{mocked_host.ssh_user}"',
+            '  ask_sudo_pass = false',
             '}')), encoding='utf-8')
 
         # Provision existing host

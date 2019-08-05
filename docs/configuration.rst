@@ -139,3 +139,23 @@ Like for Terraform, some `.user_override.json` files are provided to easily
 replace some common variables of the template file.
 
 From this a single `template.json` is generated in the configuration directory.
+
+Advanced variables definition
+_____________________________
+
+By default, Packer does not provide advanced functions to define variables
+dynamically. To solve this problem, accelpy adds the
+`Jinja2 <https://jinja.palletsprojects.com>`_ templates support for variables:
+
+* The templates only apply to values in the `variables` section of the
+  Packer configuration file (Not to keys or other sections).
+* All variables are passed as template inputs during the evaluation.
+* The templates are evaluated sequentially in the alphanumeric order of keys.
+  A previously evaluated variable can be used in another variable that appears
+  then in order.
+* All values that are not strings are removed once all templates are evaluated.
+  This is because Packer only accept string as input variables. Therefore, there
+  is no restriction to use non string values as intermediates values in
+  templates.
+* The template supports the Jinja2 loop control extension (which add `break`
+  and `continue` support in loops).

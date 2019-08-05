@@ -28,6 +28,7 @@ def test_ansible(tmpdir):
 
     source_dir = tmpdir.join('source').ensure(dir=True)
     config_dir = tmpdir.join('config').ensure(dir=True)
+    role_dir = tmpdir.join('roles').ensure(dir=True)
     variables = dict(key='value')
 
     # Test: Create configuration (With not specific provider and application)
@@ -42,10 +43,12 @@ def test_ansible(tmpdir):
     ansible.create_configuration()
 
     # Test: Galaxy install role
-    ansible.galaxy_install(['dev-sec.os-hardening', 'dev-sec.ssh-hardening'])
+    role_dir.join('accelize.accelize_drm').ensure(dir=True)  # Mock existing
+    ansible.galaxy_install(
+        ['accelize.accelize_drm', 'accelize.aws_fpga'], str(role_dir))
 
     # Test: Galaxy install should do nothing if no roles
-    ansible.galaxy_install([])
+    ansible.galaxy_install([], str(role_dir))
 
     # Test: Create configuration (with application that requires dependencies)
     ansible = Ansible(config_dir, application_type='container_service')

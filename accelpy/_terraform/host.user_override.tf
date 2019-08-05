@@ -13,7 +13,7 @@ locals {
   # SSH connection
   # ==============
   #
-  # A key pair is required to access the instance using SSH.
+  # A key pair is may be required to access the instance using SSH.
   #
   # Fill with the private key PEM file path to use
   ssh_key_pem = ""

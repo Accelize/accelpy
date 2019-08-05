@@ -13,9 +13,9 @@ phases:
     commands:
       - $CODEBUILD_SRC_DIR_toolbox/install.py
       - xlz install drmlib_cred_json=~/.accelize accelpy_common_tf
-      - python3 -m pip install -Uq setuptools pip wheel pytest
+      - python3 -m pip install -Uq setuptools pip wheel pytest-xdist
       - python3 -m pip install -qe .
 
   build:
     commands:
-      - ACCELPY_NO_COLOR=True pytest -s -m require_csp
+      - ACCELPY_NO_COLOR=True pytest -m require_csp -n 2

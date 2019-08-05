@@ -1,5 +1,5 @@
 # coding=utf-8
-"""Terraform configuration"""
+"""Packer configuration"""
 from os.path import join
 
 from accelpy._common import recursive_update, json_read, json_write, no_color
@@ -38,6 +38,9 @@ class Packer(Utility):
         """
         Generate packer configuration file.
         """
+        # Lazy import, may not be used
+        from jinja2 import Environment
+
         # Get template from this package and user directories
         sources = dict(vars=dict(variables=self._variables))
 
@@ -49,6 +52,23 @@ class Packer(Utility):
         for key in sorted(sources):
             recursive_update(template, sources[key])
 
+        # Evaluate variables that contain Jinja templates
+        variables = template['variables']
+        env = Environment(extensions=['jinja2.ext.loopcontrols'])
+        to_clean = set()
+        for key in sorted(variables):
+            value = variables[key]
+            if isinstance(value, str) and '{' in value:
+                variables[key] = env.from_string(value).render(variables)
+
+            # Mark for deletion, Packer does not accept non string as variables
+            elif not isinstance(value, str):
+                to_clean.add(key)
+
+        for key in to_clean:
+            del variables[key]
+
+        # Save template
         json_write(template, self._template)
 
     def build(self, quiet=False):

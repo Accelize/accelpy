@@ -112,7 +112,3 @@ def test_utility(tmpdir):
     with pytest.raises(RuntimeException):
         utility._download(
             last_release['current_download_url'] + 'do_not_exist')
-
-    # Test: User source directory
-    utility = Terraform(config_dir, user_config=tmpdir)
-    assert utility._source_dirs[-1] == fsdecode(tmpdir)

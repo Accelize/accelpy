@@ -2,7 +2,31 @@
   "variables": {
     "aws_access_key": "",
     "aws_secret_key": "",
-    "aws_instance_type": "f1.2xlarge",
+    "remote_os": "centos_7",
+    "ami_users": {
+      "centos_7": "centos",
+      "ubuntu_bionic": "ubuntu",
+      "ubuntu_xenial": "ubuntu"
+    },
+    "remote_user": "{{ ami_users[remote_os] }}",
+    "ami_owners": {
+      "centos_7": "679593333241",
+      "ubuntu_bionic": "099720109477",
+      "ubuntu_xenial": "099720109477"
+    },
+    "ami_owner": "{{ ami_owners[remote_os] }}",
+    "ami_names": {
+      "centos_7": "CentOS Linux 7 x86_64 HVM EBS *",
+      "ubuntu_bionic": "ubuntu/images/hvm-ssd/ubuntu-bionic-18.04-amd64-server-*",
+      "ubuntu_xenial": "ubuntu/images/ebs-ssd/ubuntu-xenial-16.04-amd64-server-*"
+    },
+    "ami_name": "{{ ami_names[remote_os] }}",
+    "instances_types": {
+      "1": "f1.2xlarge",
+      "2": "f1.4xlarge",
+      "8": "f1.16xlarge"
+    },
+    "instance_type": "{% for instance_type in instances_types | sort %}{% if (instance_type | int) >= (fpga_count | int) %}{{ instances_types[instance_type] }}{% break %}{% endif %}{% endfor %}",
     "provider_required_driver": "aws_f1"
   },
   "builders": [
@@ -15,16 +39,16 @@
       "source_ami_filter": {
         "filters": {
           "virtualization-type": "hvm",
-          "name": "CentOS Linux 7 x86_64 HVM EBS *",
+          "name": "{{user `ami_name`}}",
           "root-device-type": "ebs"
         },
         "owners": [
-          "679593333241"
+          "{{user `ami_owner`}}"
         ],
         "most_recent": true
       },
-      "ssh_username": "centos",
-      "instance_type": "{{user `aws_instance_type`}}",
+      "ssh_username": "{{user `remote_user`}}",
+      "instance_type": "{{user `instance_type`}}",
       "shutdown_behavior": "terminate",
       "spot_price": "auto",
       "spot_price_auto_product": "Linux/UNIX",

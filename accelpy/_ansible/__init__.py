@@ -1,7 +1,7 @@
 # coding=utf-8
 """Ansible configuration"""
 from os import makedirs, fsdecode, scandir, listdir
-from os.path import join, dirname, splitext
+from os.path import join, dirname, splitext, isdir
 from sys import executable
 
 from accelpy._common import (
@@ -29,10 +29,7 @@ class Ansible:
         self._provider = provider or ''
         self._application_type = application_type
         self._variables = variables or dict()
-        self._playbook = join(self._config_dir, 'playbook.yml')
-        self._source_dirs = get_sources_dirs(dirname(__file__), user_config)
-        self._source_names = get_sources_filters(
-            self._provider, application_type)
+        self._user_config = user_config
 
     def create_configuration(self):
         """
@@ -42,7 +39,8 @@ class Ansible:
         yaml_files = dict()
 
         # Get sources
-        for source_dir in self._source_dirs:
+        for source_dir in get_sources_dirs(
+                dirname(__file__), self._user_config):
             with scandir(source_dir) as entries:
                 for entry in entries:
                     name = entry.name.lower()
@@ -62,7 +60,8 @@ class Ansible:
 
         # Filter roles
         roles = {name: path for name, path in roles_local.items()
-                 if name.split('.', 1)[0] in self._source_names}
+                 if name.split('.', 1)[0] in get_sources_filters(
+                    self._provider, self._application_type)}
 
         # Initialize roles
         role_dir = join(self._config_dir, 'roles')
@@ -118,7 +117,7 @@ class Ansible:
             [role for role in roles if role.endswith('.init')] +
             [role for role in roles if not role.endswith('.init')])
 
-        yaml_write(playbook, self._playbook)
+        yaml_write(playbook, join(self._config_dir, 'playbook.yml'))
 
         # Copy other configuration files
         for name, path in yaml_files.items():
@@ -163,20 +162,50 @@ class Ansible:
             cwd=self._config_dir, check=check, pipe_stdout=pipe_stdout,
             **run_kwargs)
 
-    def galaxy_install(self, roles, roles_path=None, force=False):
+    def galaxy_install(self, roles, roles_path):
         """
         Install role from Ansible galaxy.
 
         Args:
             roles (iterable of str): Roles to install.
             roles_path (str): Path to the directory containing roles.
-            force (bool): If True, force to reinstall roles.
         """
         if roles:
-            self._ansible(
-                'install', f'--roles-path={roles_path}' if roles_path else '',
-                '--force-with-deps' if force else '',
-                *roles, utility='galaxy', pipe_stdout=True)
+
+            # Lazy import, because may be never used
+            from tempfile import TemporaryDirectory
+            from concurrent.futures import ThreadPoolExecutor
+            from shutil import rmtree, move
+
+            futures = []
+            temp_dirs = []
+            try:
+                # Download roles in parallel to improve speed
+                with ThreadPoolExecutor(max_workers=len(roles)) as executor:
+                    for role in roles:
+                        temp_dir = TemporaryDirectory(dir=roles_path,
+                                                      prefix='.accelpy_')
+                        temp_dirs.append(temp_dir)
+                        futures.append(executor.submit(
+                            self._ansible, 'install',
+                            f'--roles-path={temp_dir.name}', role,
+                            utility='galaxy', pipe_stdout=True))
+
+                for future in futures:
+                    future.result()
+
+                # Copy roles in target directory
+                for temp_dir in temp_dirs:
+                    for role in listdir(temp_dir.name):
+                        src = join(temp_dir.name, role)
+                        dst = join(roles_path, role)
+                        if isdir(dst):
+                            rmtree(dst, ignore_errors=True)
+                        move(src, dst)
+
+            finally:
+                for temp_dir in temp_dirs:
+                    temp_dir.cleanup()
 
     @classmethod
     def playbook_exec(cls):

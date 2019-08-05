@@ -37,9 +37,8 @@ class Utility:
         self._config_dir = fsdecode(config_dir)
         self._provider = provider or ''
         self._variables = variables or dict()
-        self._source_names = get_sources_filters(
-            self._provider, application_type)
-        self._source_dirs = get_sources_dirs(dirname(self._FILE), user_config)
+        self._application_type = application_type
+        self._user_config = user_config
 
     @classmethod
     def _name(cls):
@@ -296,10 +295,11 @@ class Utility:
         Yields:
             tuple of str: name and path to source files.
         """
-        names = self._source_names
+        names = get_sources_filters(self._provider, self._application_type)
         excludes = self._EXTS_EXCLUDE
         includes = self._EXTS_INCLUDE
-        for source_dir in self._source_dirs:
+        for source_dir in get_sources_dirs(
+                dirname(self._FILE), self._user_config):
             with scandir(source_dir) as entries:
                 for entry in entries:
                     name = entry.name.lower()

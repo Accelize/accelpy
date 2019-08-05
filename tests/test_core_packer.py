@@ -30,13 +30,14 @@ def test_packer(tmpdir):
     Args:
         tmpdir (py.path.local) tmpdir pytest fixture
     """
+    from accelpy._common import json_read
     from accelpy._packer import Packer
 
     from tests.test_core_ansible import mock_ansible_local
 
     config_dir = tmpdir.join('config').ensure(dir=True)
     source_dir = tmpdir.join('source').ensure(dir=True)
-    variables = dict(key='value')
+    variables = dict(key='value', template='{{ key }}', to_delete=1)
 
     # Mock provider specific Packer builder
     artifact = mock_packer_provider(source_dir)
@@ -48,6 +49,11 @@ def test_packer(tmpdir):
     packer = Packer(config_dir, variables=variables, provider='testing',
                     user_config=source_dir)
     packer.create_configuration()
+
+    # Test: check Jinja template correctly evaluated
+    template = json_read(config_dir.join('template.json'))
+    assert template['variables']['key'] == template['variables']['template']
+    assert 'to_delete' not in template['variables']
 
     # Test: Re-create should not raise
     packer.create_configuration()

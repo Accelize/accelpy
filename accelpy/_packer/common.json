@@ -1,12 +1,12 @@
 {
   "variables": {
     "image_name": "",
-    "os_hardening": "false",
-    "ssh_hardening": "false"
+    "fpga_count": "1"
   },
   "provisioners": [
     {
       "type": "ansible",
+      "user": "{{user `remote_user`}}",
       "command": "{{user `ansible`}}",
       "playbook_file": "./playbook.yml",
       "ansible_env_vars": [

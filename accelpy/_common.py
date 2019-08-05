@@ -295,8 +295,11 @@ def color_str(text, color):
     if not bool(_environ.get("ACCELPY_CLI", False)) or no_color():
         return text
 
-    # Lazy import colorama only if required
-    from colorama import init, Fore
+    # Lazy import colorama only if required and skip if not available.
+    try:
+        from colorama import init, Fore
+    except ImportError:
+        return text
 
     # Init colorama if not already done
     if _cache.get('colorama_initialized'):

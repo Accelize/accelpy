@@ -42,10 +42,6 @@ class Terraform(Utility):
         Utility.__init__(self, *args, **kwargs)
         self._initialized = False
 
-        # Initialize plugin cache directory
-        self._plugin_cache_dir = join(self._install_dir(), 'plugins')
-        makedirs(self._plugin_cache_dir, exist_ok=True)
-
     def create_configuration(self):
         """
         Generate Terraform configuration.
@@ -82,6 +78,10 @@ class Terraform(Utility):
         json_write(
             tf_vars, join(self._config_dir, 'generated.auto.tfvars.json'))
 
+        # Initialize Terraform
+        self._exec('init', self._no_color, '-input=false', pipe_stdout=True,
+                   env=self._exec_env)
+
     @property
     def _exec_env(self):
         """
@@ -90,8 +90,10 @@ class Terraform(Utility):
         Returns:
             dict: Environment variables.
         """
+        plugin_cache_dir = join(self._install_dir(), 'plugins')
+        makedirs(plugin_cache_dir, exist_ok=True)
         env = environ.copy()
-        env['TF_PLUGIN_CACHE_DIR'] = self._plugin_cache_dir
+        env['TF_PLUGIN_CACHE_DIR'] = plugin_cache_dir
         return env
 
     @property
@@ -104,16 +106,6 @@ class Terraform(Utility):
         """
         return '-no-color' if no_color() else ''
 
-        # Initialize terraform
-    def _init(self):
-        """
-        Initialize Terraform
-        """
-        if not self._initialized:
-            self._exec('init', self._no_color, '-input=false', pipe_stdout=True,
-                       env=self._exec_env)
-            self._initialized = True
-
     def plan(self):
         """
         Generate and show an execution plan. a TF plan is also saved in the
@@ -122,7 +114,6 @@ class Terraform(Utility):
         Returns:
             str: Command output
         """
-        self._init()
         return self._exec('plan', self._no_color, '-input=false', '-out=tfplan',
                           pipe_stdout=True, env=self._exec_env).stdout
 
@@ -137,8 +128,6 @@ class Terraform(Utility):
                 errors.
             delay (float): Delay to wait between retries
         """
-        self._init()
-
         failures = 0
         args = ['apply', self._no_color, '-auto-approve', '-input=false']
         if isfile(join(self._config_dir, 'tfplan')):
@@ -174,7 +163,6 @@ class Terraform(Utility):
         Args:
             quiet (bool): If True, hide outputs.
         """
-        self._init()
         self._exec('destroy', self._no_color, '-auto-approve',
                    pipe_stdout=quiet, env=self._exec_env)
 
@@ -187,7 +175,6 @@ class Terraform(Utility):
             quiet (bool): If True, hide outputs.
         """
         if self._has_state():
-            self._init()
             self._exec('refresh', self._no_color, '-input=false', '.',
                        pipe_stdout=quiet, env=self._exec_env)
 

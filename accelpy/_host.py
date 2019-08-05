@@ -2,7 +2,6 @@
 from os import chmod, fsdecode, makedirs, scandir, symlink
 from os.path import isabs, isdir, isfile, join, realpath
 
-from accelpy._application import Application
 from accelpy._common import (
     HOME_DIR, json_read, json_write, get_sources_dirs, no_color, debug)
 from accelpy.exceptions import ConfigurationException
@@ -82,7 +81,6 @@ class Host:
         # Define configuration directory en files
         self._config_dir = join(CONFIG_DIR, name)
         user_parameters_json = join(self._config_dir, 'user_parameters.json')
-        self._output_json = join(self._config_dir, 'output.json')
         self._accelize_drm_conf_json = join(
             self._config_dir, 'accelize_drm_conf.json')
         self._accelize_drm_cred_json = join(self._config_dir, 'cred.json')
@@ -90,6 +88,9 @@ class Host:
         # Create a new configuration
         config_exists = isdir(self._config_dir)
         if not config_exists and application:
+
+            # Lazy import, because may not be always used
+            from concurrent.futures import ThreadPoolExecutor
 
             # Ensure config is cleaned on creation error
             self._keep_config = False
@@ -119,10 +120,14 @@ class Host:
             symlink(self._application_yaml, join(
                 self._config_dir, 'application.yml'))
 
-            # Initialize Terraform and Ansible configuration
-            self._terraform.create_configuration()
-            self._ansible.create_configuration()
-            self._packer.create_configuration()
+            # Initialize utilities configuration
+            futures = []
+            with ThreadPoolExecutor(max_workers=3) as executor:
+                for utility in (self._terraform, self._ansible, self._packer):
+                    futures.append(executor.submit(
+                        getattr(utility, 'create_configuration')))
+            for future in futures:
+                future.result()
 
             self._keep_config = keep_config
 
@@ -230,15 +235,14 @@ class Host:
         image = self._packer.get_artifact(manifest)
 
         if update_application and self._application_yaml:
-            application = Application(self._application_yaml)
             try:
-                section = application['package'][self._provider]
+                section = self._application['package'][self._provider]
             except KeyError:
-                section = application['package'][self._provider] = dict()
+                section = self._application['package'][self._provider] = dict()
 
             section['type'] = 'vm_image'
             section['name'] = image
-            application.save()
+            self._application.save()
 
         return image
 
@@ -397,6 +401,7 @@ class Host:
                     (self._provider or '').split(','))}
             variables['image_name'] = self._name
             variables['ansible'] = Ansible.playbook_exec()
+            variables['fpga_count'] = str(self._app('fpga', 'count'))
 
             self._packer_config = Packer(
                 provider=self._provider, config_dir=self._config_dir,
@@ -468,6 +473,7 @@ class Host:
             accelpy._application.Application: Definition
         """
         if not self._application_definition:
+            from accelpy._application import Application
             self._application_definition = Application(self._application_yaml)
 
         return self._application_definition
