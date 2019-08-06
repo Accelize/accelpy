@@ -2,8 +2,8 @@
 from os import chmod, fsdecode, makedirs, scandir, symlink
 from os.path import isabs, isdir, isfile, join, realpath
 
-from accelpy._common import (
-    HOME_DIR, json_read, json_write, get_sources_dirs, no_color, debug)
+from accelpy._common import HOME_DIR, get_sources_dirs
+from accelpy._json import json_write, json_read
 from accelpy.exceptions import ConfigurationException
 
 CONFIG_DIR = join(HOME_DIR, 'hosts')
@@ -58,8 +58,7 @@ class Host:
             its Terraform managed infrastructure still exists
     """
     def __init__(self, name=None, application=None, provider=None,
-                 user_config=None, destroy_on_exit=False,
-                 keep_config=True):
+                 user_config=None, destroy_on_exit=False, keep_config=True):
 
         # Initialize some futures values
         self._ansible_config = None
@@ -74,110 +73,29 @@ class Host:
 
         # Define name
         if not name:
+            # Lazy import: May not be used all time
             from uuid import uuid1
+
             name = str(uuid1()).replace('-', '')
         self._name = name
 
         # Define configuration directory en files
         self._config_dir = join(CONFIG_DIR, name)
-        user_parameters_json = join(self._config_dir, 'user_parameters.json')
-        self._accelize_drm_conf_json = join(
-            self._config_dir, 'accelize_drm_conf.json')
-        self._accelize_drm_cred_json = join(self._config_dir, 'cred.json')
+        config_exists = isdir(self._config_dir)
+
+        self._user_parameters_json = join(
+            self._config_dir, 'user_parameters.json')
 
         # Create a new configuration
-        config_exists = isdir(self._config_dir)
+
         if not config_exists and application:
-
-            # Lazy import, because may not be always used
-            from concurrent.futures import ThreadPoolExecutor
-
-            # Ensure config is cleaned on creation error
-            self._keep_config = False
-
-            # Create target configuration directory and remove access to other
-            # users since Terraform state files may content sensible data and
-            # directory may contain SSH private key
-            makedirs(self._config_dir, exist_ok=True)
-            chmod(self._config_dir, 0o700)
-
-            # Get user parameters used
-            self._provider = provider
-            self._user_config = fsdecode(user_config or HOME_DIR)
-
-            # Save user parameters
-            json_write(dict(provider=self._provider,
-                            user_config=self._user_config),
-                       user_parameters_json)
-
-            # Get application and add it as link with configuration
-            self._application_yaml = realpath(fsdecode(application))
-
-            # Check Accelize Requirements
-            self._init_accelize_drm()
-
-            # Add link to configuration
-            symlink(self._application_yaml, join(
-                self._config_dir, 'application.yml'))
-
-            # Initialize utilities configuration
-            futures = []
-            with ThreadPoolExecutor(max_workers=3) as executor:
-                for utility in (self._terraform, self._ansible, self._packer):
-                    futures.append(executor.submit(
-                        getattr(utility, 'create_configuration')))
-            for future in futures:
-                future.result()
-
-            self._keep_config = keep_config
-
-        # Load an existing configuration
-        elif config_exists:
-
-            # Retrieve application parameters
-            self._application_yaml = realpath(join(
-                self._config_dir, 'application.yml'))
-
-            # Retrieve user parameters
-            user_parameters = json_read(user_parameters_json)
-            self._provider = user_parameters['provider']
-            self._user_config = user_parameters['user_config']
+            self._create_config(application, provider, user_config)
 
         # Unable to create configuration
-        else:
+        elif not config_exists:
             raise ConfigurationException(
                 'Require at least an existing host name, or an '
                 'application to create a new host.')
-
-    def _init_accelize_drm(self):
-        """Initialize Accelize DRM requirements"""
-
-        # Create configuration file from application
-        accelize_drm_enable = self._app('accelize_drm', 'use_service')
-        accelize_drm_conf = self._app('accelize_drm', 'conf')
-
-        if accelize_drm_enable and not accelize_drm_conf:
-            raise ConfigurationException(
-                'Application definition section "accelize_drm" require '
-                '"conf" value to be specified if "use_service" is '
-                'specified.')
-
-        json_write(accelize_drm_conf, self._accelize_drm_conf_json)
-
-        # Get credentials file from user configuration
-        for src in get_sources_dirs(self._user_config):
-
-            cred_path = join(src, 'cred.json')
-
-            if isfile(cred_path):
-                symlink(cred_path, self._accelize_drm_cred_json)
-                break
-        else:
-            raise ConfigurationException(
-                'No Accelize DRM credential found. Please, make sure to '
-                f'have your "cred.json" file installed in "{HOME_DIR}", '
-                f'current directory or path specified with the '
-                f'"user_config" argument.')
 
     def __enter__(self):
         return self
@@ -194,6 +112,167 @@ class Host:
 
     def __repr__(self):
         return self.__str__()
+
+    def _create_config(self, application, provider, user_config):
+        """
+        Create configuration.
+
+        Args:
+            application (path-like object): Path to application definition file.
+            provider (str): Provider name.
+            user_config (path-like object): User configuration directory.
+        """
+        # Ensure config is cleaned on creation error
+        keep_config = self._keep_config
+        self._keep_config = False
+
+        # Lazy import, because may not be always used
+        from concurrent.futures import ThreadPoolExecutor
+        from accelpy._ansible import Ansible
+
+        # Create target configuration directory and remove access to other
+        # users since Terraform state files may content sensible data and
+        # directory may contain SSH private key
+        makedirs(self._config_dir, exist_ok=True)
+        chmod(self._config_dir, 0o700)
+
+        # Save user parameters
+        user_config = fsdecode(user_config or HOME_DIR)
+        json_write(dict(provider=provider, user_config=user_config),
+                   self._user_parameters_json)
+
+        # Link application definition into configuration directory
+        symlink(realpath(fsdecode(application)), join(
+            self._config_dir, 'application.yml'))
+
+        # Get values from application
+        def app(section, key):
+            """
+            Get application value for specified provider
+
+            Args:
+                section (str): Definition section.
+                key (str): Definition key.
+
+            Returns:
+                Value
+            """
+            return self._application.get(section, key, env=provider)
+
+        fpga_count = app('fpga', 'count')
+        package_name = app('package', 'name')
+        application_type = app('application', 'type')
+        accelize_drm_enable = app('accelize_drm', 'use_service')
+        name = self._name
+
+        # Check Accelize DRM Requirements
+        accelize_drm_conf_json = join(
+            self._config_dir, 'accelize_drm_conf.json')
+        accelize_drm_cred_json = join(self._config_dir, 'cred.json')
+
+        self._init_accelize_drm(
+            accelize_drm_conf_json, accelize_drm_cred_json, user_config,
+            app('accelize_drm', 'conf'), accelize_drm_enable)
+
+        # Set Ansible variables
+        ansible_env = Ansible.environment()
+        ansible_exec = Ansible.playbook_exec()
+        ansible_variables = dict(
+            fpga_image=app('fpga', 'image'),
+            fpga_driver=app('fpga', 'driver'),
+            fpga_driver_version=app('fpga', 'driver_version'),
+            fpga_slots=[slot for slot in range(fpga_count)],
+            firewall_rules=self._application['firewall_rules'],
+            package_name=package_name,
+            package_version=app('package', 'version'),
+            package_repository=app('package', 'repository'),
+            accelize_drm_disabled=not accelize_drm_enable,
+            accelize_drm_conf_src=accelize_drm_conf_json,
+            accelize_drm_cred_src=accelize_drm_cred_json
+        )
+        ansible_variables.update(app('application', 'variables'))
+
+        # Set Packer variables
+        packer_variables = {
+            f'provider_param_{index}': value
+            for index, value in enumerate((provider or '').split(','))}
+        packer_variables.update(dict(
+            image_name=name,
+            ansible=ansible_exec,
+            fpga_count=str(fpga_count)
+        ))
+
+        # Set Terraform variables
+        terraform_variables = dict(
+            ansible=' '.join(
+                [f'{key}={value}' for key, value in ansible_env.items()] +
+                [ansible_exec]),
+            firewall_rules=self._application['firewall_rules'],
+            fpga_count=fpga_count,
+            package_vm_image=package_name if app(
+                'package', 'type') == 'vm_image' else '',
+            host_name=name,
+            host_provider=provider
+        )
+
+        # Initialize utilities configuration
+        futures = []
+        with ThreadPoolExecutor(max_workers=3) as executor:
+
+            for utility, variables in (
+                    (self._terraform, terraform_variables),
+                    (self._ansible, ansible_variables),
+                    (self._packer, packer_variables)):
+
+                futures.append(executor.submit(
+                    getattr(utility, 'create_configuration'),
+                    provider=provider, application_type=application_type,
+                    variables=variables, user_config=user_config))
+
+        for future in futures:
+            future.result()
+
+        # Restore keep config flag once configuration si completed
+        self._keep_config = keep_config
+
+    @staticmethod
+    def _init_accelize_drm(
+            accelize_drm_conf_json, accelize_drm_cred_json, user_config,
+            accelize_drm_conf, accelize_drm_enable):
+        """
+        Initialize Accelize DRM requirements
+
+        Args:
+            accelize_drm_conf_json (str): Path to conf.json
+            accelize_drm_cred_json (str): Path to cred.json
+            user_config (str): Path to user configuration directory
+            accelize_drm_conf (dict): conf.json content
+            accelize_drm_enable (bool): True if service is enabled
+        """
+
+        # Create configuration file from application
+        if accelize_drm_enable and not accelize_drm_conf:
+            raise ConfigurationException(
+                'Application definition section "accelize_drm" require '
+                '"conf" value to be specified if "use_service" is '
+                'specified.')
+
+        json_write(accelize_drm_conf, accelize_drm_conf_json)
+
+        # Get credentials file from user configuration
+        for src in get_sources_dirs(user_config):
+
+            cred_path = join(src, 'cred.json')
+
+            if isfile(cred_path):
+                symlink(cred_path, accelize_drm_cred_json)
+                break
+        else:
+            raise ConfigurationException(
+                'No Accelize DRM credential found. Please, make sure to '
+                f'have your "cred.json" file installed in "{HOME_DIR}", '
+                f'current directory or path specified with the '
+                f'"user_config" argument.')
 
     def plan(self):
         """
@@ -234,11 +313,12 @@ class Host:
         manifest = self._packer.build(quiet=quiet)
         image = self._packer.get_artifact(manifest)
 
-        if update_application and self._application_yaml:
+        if update_application:
+            provider = json_read(self._user_parameters_json)['provider']
             try:
-                section = self._application['package'][self._provider]
+                section = self._application['package'][provider]
             except KeyError:
-                section = self._application['package'][self._provider] = dict()
+                section = self._application['package'][provider] = dict()
 
             section['type'] = 'vm_image'
             section['name'] = image
@@ -313,19 +393,6 @@ class Host:
         """
         return self._get_terraform_output('host_public_ip')
 
-    def _app(self, section, key):
-        """
-        Get application value for specified provider
-
-        Args:
-            section (str): Definition section.
-            key (str): Definition key.
-
-        Returns:
-            Value
-        """
-        return self._application.get(section, key, env=self._provider)
-
     def _get_terraform_output(self, key):
         """
         Get an output from Terraform state.
@@ -357,28 +424,7 @@ class Host:
             # Lazy import: May not be used all time
             from accelpy._ansible import Ansible
 
-            # Set Ansible variables
-            variables = dict(
-                fpga_image=self._app('fpga', 'image'),
-                fpga_driver=self._app('fpga', 'driver'),
-                fpga_driver_version=self._app('fpga', 'driver_version'),
-                fpga_slots=[
-                    slot for slot in range(int(self._app('fpga', 'count')))],
-                firewall_rules=self._application['firewall_rules'],
-                package_name=self._app('package', 'name'),
-                package_version=self._app('package', 'version'),
-                package_repository=self._app('package', 'repository'),
-                accelize_drm_disabled=not self._app('accelize_drm',
-                                                    'use_service'),
-                accelize_drm_conf_src=self._accelize_drm_conf_json,
-                accelize_drm_cred_src=self._accelize_drm_cred_json
-            )
-            variables.update(self._app('application', 'variables'))
-
-            self._ansible_config = Ansible(
-                config_dir=self._config_dir, provider=self._provider,
-                application_type=self._app('application', 'type'),
-                variables=variables)
+            self._ansible_config = Ansible(config_dir=self._config_dir)
 
         return self._ansible_config
 
@@ -393,19 +439,8 @@ class Host:
         if not self._packer_config:
             # Lazy import: May not be used all time
             from accelpy._packer import Packer
-            from accelpy._ansible import Ansible
 
-            variables = {
-                f'provider_param_{index}': value
-                for index, value in enumerate(
-                    (self._provider or '').split(','))}
-            variables['image_name'] = self._name
-            variables['ansible'] = Ansible.playbook_exec()
-            variables['fpga_count'] = str(self._app('fpga', 'count'))
-
-            self._packer_config = Packer(
-                provider=self._provider, config_dir=self._config_dir,
-                user_config=self._user_config, variables=variables)
+            self._packer_config = Packer(config_dir=self._config_dir)
 
         return self._packer_config
 
@@ -420,47 +455,8 @@ class Host:
         if not self._terraform_config:
             # Lazy import: May not be used all time
             from accelpy._terraform import Terraform
-            from accelpy._ansible import Ansible
-            # TODO: Test and enable once Ansible 2.8 is supported
-            # import ansible_mitogen.plugins.strategy as strategy
 
-            no_color_mode = no_color()
-            debug_mode = debug()
-            ansible_env = ' '.join(f'{key}={value}' for key, value in {
-
-                # Reduce output except in debug mode
-                'ANSIBLE_DISPLAY_SKIPPED_HOSTS': debug_mode,
-                'ANSIBLE_DISPLAY_OK_HOSTS': debug_mode,
-                'ANSIBLE_HOST_KEY_CHECKING': False,
-                'ANSIBLE_DEPRECATION_WARNINGS': debug_mode,
-                'ANSIBLE_ACTION_WARNINGS': debug_mode,
-
-                # Enable/Disable color outputs (May be useful in some CI env)
-                'ANSIBLE_FORCE_COLOR': not no_color_mode,
-                'ANSIBLE_NOCOLOR': no_color_mode,
-
-                # Speed up Ansible
-                'ANSIBLE_PIPELINING': True,
-                'ANSIBLE_SSH_ARGS':
-                    '"-o ControlMaster=auto -o ControlPersist=60s '
-                    '-o PreferredAuthentications=publickey"',
-                # 'ANSIBLE_STRATEGY': 'mitogen_linear',
-                # 'ANSIBLE_STRATEGY_PLUGINS': strategy.__path__[0],
-            }.items())
-
-            variables = dict(
-                ansible=f"{ansible_env} {Ansible.playbook_exec()}",
-                firewall_rules=self._application['firewall_rules'],
-                fpga_count=self._app('fpga', 'count'),
-                package_vm_image=self._app('package', 'name')
-                if self._app('package', 'type') == 'vm_image' else '',
-                host_name=self._name,
-                host_provider=self._provider
-            )
-
-            self._terraform_config = Terraform(
-                provider=self._provider, config_dir=self._config_dir,
-                user_config=self._user_config, variables=variables)
+            self._terraform_config = Terraform(config_dir=self._config_dir)
 
         return self._terraform_config
 
@@ -473,8 +469,11 @@ class Host:
             accelpy._application.Application: Definition
         """
         if not self._application_definition:
+            # Lazy import: May not be used all time
             from accelpy._application import Application
-            self._application_definition = Application(self._application_yaml)
+
+            self._application_definition = Application(realpath(join(
+                self._config_dir, 'application.yml')))
 
         return self._application_definition
 

@@ -20,16 +20,13 @@ dependencies:
 
   # FPGA drivers
   - role: 'accelize.aws_fpga'
-    vars:
-      xilinx_xrt_version: "{{ fpga_driver_version }}"
-      # TODO: Disabled, crash in AWS Udev script on CentOS
-      # aws_fpga_allow_non_root: true
-      # aws_fpga_sdk_override_group: true
+    # vars:
+    #   TODO: Disabled, crash in AWS Udev script on CentOS
+    #   aws_fpga_allow_non_root: true
+    #   aws_fpga_sdk_override_group: true
     when: fpga_driver == 'aws_f1'
 
   - role: 'accelize.xilinx_xrt'
-    vars:
-      xilinx_xrt_version: "{{ fpga_driver_version }}"
     when: fpga_driver == 'xilinx_xrt'
 
   # Accelize DRM

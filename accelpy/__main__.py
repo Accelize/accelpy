@@ -87,11 +87,14 @@ def _action_apply(args):
 
     Args:
         args (argparse.Namespace): CLI arguments.
-
-    Returns:
-        str: command output.
     """
-    return _host(args).apply(quiet=args.quiet)
+    _host(args).apply(quiet=args.quiet)
+    if not args.quiet:
+        from accelpy._common import color_str
+        print(color_str(
+            "\nYou can connect to the host using the following command:\n"
+            "ssh -Yt -i $(accelpy ssh_private_key) "
+            "$(accelpy ssh_user)@$(accelpy public_ip)", 'CYAN'))
 
 
 def _action_build(args):
@@ -114,9 +117,6 @@ def _action_destroy(args):
 
     Args:
         args (argparse.Namespace): CLI arguments.
-
-    Returns:
-        str: command output.
     """
     return _host(args, keep_config=not args.delete).destroy(quiet=args.quiet)
 
@@ -190,12 +190,9 @@ def _action_lint(args):
 
     Args:
         args (argparse.Namespace): CLI arguments.
-
-    Returns:
-        str: Hosts list.
     """
-    from accelpy import lint
-    return lint(args.file)
+    from accelpy._application import Application
+    Application(args.file)
 
 
 def _run_command():

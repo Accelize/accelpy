@@ -10,7 +10,7 @@ python:
 
 install:
     # Python environment
-    - "python -m pip install --U --upgrade-strategy eager setuptools pip wheel
+    - "python -m pip install -U --upgrade-strategy eager setuptools pip wheel
        pytest-cov pytest-xdist codecov molecule[docker] --pre"
 
     # Installs all package dependencies

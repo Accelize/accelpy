@@ -12,7 +12,7 @@ def mock_packer_provider(source_dir):
     Returns:
         str: artifact
     """
-    from accelpy._common import json_write
+    from accelpy._json import json_write
     artifact = "artifact.json"
     json_write({
         "builders": [{
@@ -30,7 +30,7 @@ def test_packer(tmpdir):
     Args:
         tmpdir (py.path.local) tmpdir pytest fixture
     """
-    from accelpy._common import json_read
+    from accelpy._json import json_read
     from accelpy._packer import Packer
 
     from tests.test_core_ansible import mock_ansible_local
@@ -46,9 +46,9 @@ def test_packer(tmpdir):
     mock_ansible_local(config_dir)
 
     # Test: Create configuration (With not specific provider and application)
-    packer = Packer(config_dir, variables=variables, provider='testing',
-                    user_config=source_dir)
-    packer.create_configuration()
+    packer = Packer(config_dir)
+    packer.create_configuration(
+        variables=variables, provider='testing', user_config=source_dir)
 
     # Test: check Jinja template correctly evaluated
     template = json_read(config_dir.join('template.json'))
@@ -56,7 +56,8 @@ def test_packer(tmpdir):
     assert 'to_delete' not in template['variables']
 
     # Test: Re-create should not raise
-    packer.create_configuration()
+    packer.create_configuration(
+        variables=variables, provider='testing', user_config=source_dir)
 
     # Test: Validate should not raise on basic configuration
     packer.validate()

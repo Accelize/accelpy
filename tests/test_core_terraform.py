@@ -14,7 +14,7 @@ def mock_terraform_provider(source_dir, **variables):
     Returns:
         dict: Input variables.
     """
-    from accelpy._common import json_write
+    from accelpy._json import json_write
 
     local_variables = {
         "host_public_ip": "127.0.0.1",
@@ -22,7 +22,7 @@ def mock_terraform_provider(source_dir, **variables):
         "remote_user": 'user',
         "remote_os": "os",
         "provider_required_driver": "driver",
-        "ask_sudo_pass": "false"
+        "require_ask_pass": "false"
     }
     json_write({
         "locals": local_variables
@@ -55,9 +55,9 @@ def test_terraform(tmpdir):
     local_variables = mock_terraform_provider(source_dir)
 
     # Test: Create configuration (With not specific provider and application)
-    terraform = Terraform(
-        config_dir, variables=dict(host_name='testing'), user_config=source_dir)
-    terraform.create_configuration()
+    terraform = Terraform(config_dir)
+    terraform.create_configuration(
+        variables=dict(host_name='testing'), user_config=source_dir)
 
     # Test: Re-create should not raise
     terraform.create_configuration()
@@ -83,7 +83,7 @@ def test_terraform(tmpdir):
     assert output['host_ssh_private_key'] == './ssh_private.pem'
     for key, value in local_variables.items():
         if key not in ('provider_required_driver', 'remote_os',
-                       'ask_sudo_pass'):
+                       'require_ask_pass'):
             assert output[key] == value, f'"{key}"" in output result'
 
     # Test: Refresh should not raise with state file
@@ -105,6 +105,11 @@ def test_terraform(tmpdir):
     class FakeTerraform(Terraform):
         """Fake Terraform"""
 
+        @classmethod
+        def _name(cls):
+            """Use correct name."""
+            return 'terraform'
+
         @staticmethod
         def _exec(*args, **_):
             """
@@ -113,8 +118,9 @@ def test_terraform(tmpdir):
             if 'apply' in args:
                 raise RuntimeException(exception_message)
 
-    terraform = FakeTerraform(
-        config_dir, variables=dict(host_name='testing'), user_config=source_dir)
+    terraform = FakeTerraform(config_dir)
+    terraform.create_configuration(
+        variables=dict(host_name='testing'), user_config=source_dir)
 
     # Test: Apply should not retry if not retryable known error
     with pytest.raises(RuntimeException) as excinfo:
@@ -144,8 +150,8 @@ def test_common_configuration(tmpdir):
     # Test: Default generated SSH key
     mock_terraform_provider(source_dir)
 
-    terraform = Terraform(config_dir, user_config=source_dir)
-    terraform.create_configuration()
+    terraform = Terraform(config_dir)
+    terraform.create_configuration(user_config=source_dir)
     terraform.apply(quiet=True)
 
     assert terraform.output['host_ssh_private_key'] == './ssh_private.pem'
@@ -176,8 +182,8 @@ def test_common_configuration(tmpdir):
     config_dir.ensure(dir=True)
     mock_terraform_provider(source_dir, ssh_key_pem=str(user_ssh_key))
 
-    terraform = Terraform(config_dir, user_config=source_dir)
-    terraform.create_configuration()
+    terraform = Terraform(config_dir)
+    terraform.create_configuration(user_config=source_dir)
     terraform.apply(quiet=True)
 
     assert terraform.output['host_ssh_private_key'] == str(user_ssh_key)

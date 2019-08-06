@@ -233,16 +233,6 @@ It is possible to iterate over existing configuration with the
     for host in iter_hosts():
         print(host.public_ip)
 
-Finally, the Python API also provides a function to verify application
-definition files.
-
-.. code-block:: python
-
-    from accelpy import lint
-
-    # This raises an exception if error in application definition file
-    lint("path/to/application.yml")
-
 configuration
 -------------
 

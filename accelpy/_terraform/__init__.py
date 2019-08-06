@@ -5,7 +5,8 @@ from os import makedirs, remove, environ
 from os.path import join, isfile
 from time import sleep
 
-from accelpy._common import json_write, symlink, no_color
+from accelpy._common import symlink, no_color
+from accelpy._json import json_write
 from accelpy._hashicorp import Utility
 from accelpy.exceptions import RuntimeException
 
@@ -27,22 +28,17 @@ class Terraform(Utility):
 
     Args:
         config_dir (path-like object): Configuration directory.
-        provider (str): Provider name.
-            Required only if no "host_id" provided.
-        user_config (path-like object): User configuration directory.
-            Required only if no "host_id" provided.
-        variables (dict): Terraform input variables.
-            Required only if no "host_id" provided.
     """
     _executable = None
     _FILE = __file__
     _EXTS_INCLUDE = ('.tf', '.tfvars', '.tf.json', '.tfvars.json')
 
-    def __init__(self, *args, **kwargs):
-        Utility.__init__(self, *args, **kwargs)
+    def __init__(self, config_dir):
+        Utility.__init__(self, config_dir)
         self._initialized = False
 
-    def create_configuration(self):
+    def create_configuration(self, provider=None, application_type=None,
+                             variables=None, user_config=None):
         """
         Generate Terraform configuration.
 
@@ -57,9 +53,15 @@ class Terraform(Utility):
         If multiples files with the same name are found, the last one found is
         used. Directories are checked in the listed order to allow user to
         override default configuration easily.
+
+        Args:
+            provider (str): Provider name.
+            user_config (path-like object): User configuration directory.
+            variables (dict): Terraform input variables.
         """
         # Link configuration files matching provider and options
-        for name, src_path in self._list_sources():
+        for name, src_path in self._list_sources(
+                provider, application_type, user_config):
             dst_path = join(self._config_dir, name)
 
             # Replace existing file
@@ -73,7 +75,7 @@ class Terraform(Utility):
 
         # Add variables
         tf_vars = {
-            key: value for key, value in self._variables.items()
+            key: value for key, value in (variables or dict()).items()
             if value is not None}
         json_write(
             tf_vars, join(self._config_dir, 'generated.auto.tfvars.json'))

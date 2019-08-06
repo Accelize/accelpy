@@ -5,8 +5,9 @@ from os.path import join, dirname, splitext, isdir
 from sys import executable
 
 from accelpy._common import (
-    yaml_read, yaml_write, call, get_sources_dirs, symlink, get_sources_filters,
-    get_python_package_entry_point)
+    call, get_sources_dirs, symlink, get_sources_filters,
+    get_python_package_entry_point, debug, no_color)
+from accelpy._yaml import yaml_read, yaml_write
 
 
 class Ansible:
@@ -15,32 +16,28 @@ class Ansible:
 
     Args:
         config_dir (path-like object): Configuration directory.
-        provider (str): Provider name.
-        application_type (str): Application type.
-        variables (dict): Ansible playbook variables.
-        user_config (path-like object): User configuration directory.
     """
     _ANSIBLE_EXECUTABLE = None
 
-    def __init__(self, config_dir,
-                 provider=None, application_type=None, variables=None,
-                 user_config=None):
+    def __init__(self, config_dir):
         self._config_dir = fsdecode(config_dir)
-        self._provider = provider or ''
-        self._application_type = application_type
-        self._variables = variables or dict()
-        self._user_config = user_config
 
-    def create_configuration(self):
+    def create_configuration(self, provider=None, application_type=None,
+                             variables=None, user_config=None):
         """
         Generate Ansible configuration.
+
+        Args:
+            provider (str): Provider name.
+            application_type (str): Application type.
+            variables (dict): Ansible playbook variables.
+            user_config (path-like object): User configuration directory.
         """
         roles_local = dict()
         yaml_files = dict()
 
         # Get sources
-        for source_dir in get_sources_dirs(
-                dirname(__file__), self._user_config):
+        for source_dir in get_sources_dirs(dirname(__file__), user_config):
             with scandir(source_dir) as entries:
                 for entry in entries:
                     name = entry.name.lower()
@@ -61,7 +58,7 @@ class Ansible:
         # Filter roles
         roles = {name: path for name, path in roles_local.items()
                  if name.split('.', 1)[0] in get_sources_filters(
-                    self._provider, self._application_type)}
+                    provider or '', application_type)}
 
         # Initialize roles
         role_dir = join(self._config_dir, 'roles')
@@ -110,7 +107,7 @@ class Ansible:
         # Create playbook
         playbook = yaml_read(playbook_src)
         playbook[0]['vars'] = {
-            key: value for key, value in self._variables.items()
+            key: value for key, value in (variables or dict()).items()
             if value is not None}
         roles = sorted(roles)
         playbook[0]['roles'] = (
@@ -139,6 +136,39 @@ class Ansible:
                 'ansible', 'ansible') or 'ansible'
 
         return cls._ANSIBLE_EXECUTABLE
+
+    @staticmethod
+    def environment():
+        """
+        Ansible running environment.
+
+        Returns:
+            dict: Ansible environment.
+        """
+        # TODO: Test and enable once Ansible 2.8 is supported
+        # import ansible_mitogen.plugins.strategy as strategy
+
+        no_color_mode = no_color()
+        debug_mode = debug()
+        return {
+            # Reduce output except in debug mode
+            'ANSIBLE_DISPLAY_SKIPPED_HOSTS': debug_mode,
+            'ANSIBLE_DISPLAY_OK_HOSTS': debug_mode,
+            'ANSIBLE_HOST_KEY_CHECKING': False,
+            'ANSIBLE_DEPRECATION_WARNINGS': debug_mode,
+            'ANSIBLE_ACTION_WARNINGS': debug_mode,
+
+            # Enable/Disable color outputs (May be useful in some CI env)
+            'ANSIBLE_FORCE_COLOR': not no_color_mode,
+            'ANSIBLE_NOCOLOR': no_color_mode,
+
+            # Speed up Ansible
+            'ANSIBLE_PIPELINING': True,
+            'ANSIBLE_SSH_ARGS':
+                '"-o ControlMaster=auto -o ControlPersist=60s"',
+            # 'ANSIBLE_STRATEGY': 'mitogen_linear',
+            # 'ANSIBLE_STRATEGY_PLUGINS': strategy.__path__[0],
+        }
 
     def _ansible(self, *args, utility=None, check=True, pipe_stdout=False,
                  **run_kwargs):

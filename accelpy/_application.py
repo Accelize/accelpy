@@ -2,7 +2,7 @@
 """Application Definition"""
 from os import fsdecode
 
-from accelpy._common import yaml_read, yaml_write
+from accelpy._yaml import yaml_read, yaml_write
 from accelpy.exceptions import ConfigurationException
 
 # Application definition format
@@ -105,20 +105,6 @@ FORMAT = {
         )
     }
 }
-
-
-def lint(path):
-    """
-    Validate an application definition file.
-
-    Args:
-        path (path-like object): Path to yaml definition file.
-
-    Raises:
-        accelpy.exceptions.ConfigurationException: Error in definition
-        file.
-    """
-    Application(path)
 
 
 class Application:

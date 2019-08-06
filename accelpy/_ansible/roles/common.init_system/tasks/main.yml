@@ -10,7 +10,7 @@
 - name: Ensure system is up to date
   apt:
     name: "*"
-    state: latest
+    state: latest  # noqa 403
     update_cache: true
     autoremove: true
     purge: true
@@ -21,7 +21,7 @@
 - name: Ensure system is up to date
   yum:
     name: "*"
-    state: latest
+    state: latest  # noqa 403
   retries: 10
   delay: 1
   when: ansible_os_family == 'RedHat'

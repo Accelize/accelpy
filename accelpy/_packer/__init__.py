@@ -2,7 +2,8 @@
 """Packer configuration"""
 from os.path import join
 
-from accelpy._common import recursive_update, json_read, json_write, no_color
+from accelpy._common import recursive_update, no_color
+from accelpy._json import json_read, json_write
 from accelpy._hashicorp import Utility
 
 
@@ -22,29 +23,33 @@ class Packer(Utility):
 
     Args:
         config_dir (path-like object): Configuration directory.
-        provider (str): Provider name.
-        user_config (path-like object): User configuration directory.
-        variables (dict): Packer template variables.
     """
     _FILE = __file__
     _EXTS_INCLUDE = ('.json', )
     _EXTS_EXCLUDE = ('.tf.json', '.tfvars.json')
 
-    def __init__(self, *args, **kwargs):
-        Utility.__init__(self, *args, **kwargs)
+    def __init__(self, config_dir):
+        Utility.__init__(self, config_dir)
         self._template = join(self._config_dir, 'template.json')
 
-    def create_configuration(self):
+    def create_configuration(self, provider=None, application_type=None,
+                             variables=None, user_config=None):
         """
         Generate packer configuration file.
+
+        Args:
+            provider (str): Provider name.
+            user_config (path-like object): User configuration directory.
+            vars (dict): Terraform input variables.
         """
         # Lazy import, may not be used
         from jinja2 import Environment
 
         # Get template from this package and user directories
-        sources = dict(vars=dict(variables=self._variables))
+        sources = dict(vars=dict(variables=variables or dict()))
 
-        for name, src_path in self._list_sources():
+        for name, src_path in self._list_sources(
+                provider, application_type, user_config):
             sources[name] = json_read(src_path)
 
         # Generate the Packer template file

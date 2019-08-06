@@ -64,7 +64,6 @@ def test_host(tmpdir):
         assert host_config_dir.join('common.tf').isfile()
         assert host_config_dir.join('template.json').isfile()
         assert host_config_dir.join('application.yml').isfile()
-        assert host._application_yaml
         assert host._ansible
         assert host._application
         assert host._terraform
@@ -143,21 +142,24 @@ def test_host(tmpdir):
                   provider=provider) as host:
 
             # Mock ansible playbook
-            mock_ansible_local(config_dir.join(host.name))
+            host_config_dir = config_dir.join(host.name)
+            mock_ansible_local(host_config_dir)
+
+            application_yaml = str(host_config_dir.join('application.yml'))
 
             # Test: Build image and with no application update
-            assert Application(host._application_yaml).get(
+            assert Application(application_yaml).get(
                 'package', 'name', env=provider) == 'my_image'
 
             host.build(quiet=True)
 
-            assert Application(host._application_yaml).get(
+            assert Application(application_yaml).get(
                 'package', 'name', env=provider) == 'my_image'
 
             # Test: Build image and update application
             host.build(quiet=True, update_application=True)
 
-            assert Application(host._application_yaml).get(
+            assert Application(application_yaml).get(
                 'package', 'name', env=provider) == artifact
 
         # Test: Missing Accelize DRM configuration

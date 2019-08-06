@@ -23,17 +23,17 @@ locals {
 
   # AMI Information for supported OS
   ami_users = {
-    "centos_7" = "centos"
+    "centos_7"      = "centos"
     "ubuntu_bionic" = "ubuntu"
     "ubuntu_xenial" = "ubuntu"
   }
   ami_owners = {
-    "centos_7" = "679593333241"
+    "centos_7"      = "679593333241"
     "ubuntu_bionic" = "099720109477"
     "ubuntu_xenial" = "099720109477"
   }
   ami_names = {
-    "centos_7" = "CentOS Linux 7 x86_64 HVM EBS *"
+    "centos_7"      = "CentOS Linux 7 x86_64 HVM EBS *"
     "ubuntu_bionic" = "ubuntu/images/hvm-ssd/ubuntu-bionic-18.04-amd64-server-*"
     "ubuntu_xenial" = "ubuntu/images/ebs-ssd/ubuntu-xenial-16.04-amd64-server-*"
   }
@@ -41,8 +41,8 @@ locals {
   # Use CentOS 7 because the only one that wrok with AWS FPGA driver
   remote_os = "centos_7"
 
-  # AWS AMI does not require sudo password by default
-  ask_sudo_pass = false
+  # AWS AMI does not require ssh/become password by default
+  require_ask_pass = false
 }
 
 # Instance image and sudo user name
@@ -129,9 +129,9 @@ EOF
 }
 
 resource "aws_iam_role_policy" "role_policy" {
-name   = local.name
-role   = aws_iam_role.role.id
-policy = local.policy
+  name   = local.name
+  role   = aws_iam_role.role.id
+  policy = local.policy
 }
 
 

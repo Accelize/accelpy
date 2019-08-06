@@ -31,8 +31,8 @@ locals {
   # Ansible Remote python to use: Python3 except on CentOS 7, tries to use auto if OS is not specified.
   ansible_python = local.remote_os == "" ? "auto" : (local.remote_os == "centos_7" ? "/usr/bin/python" : "/usr/bin/python3")
 
-  # Ansible become/sudo, by default: ask password to user in stdin
-  ansible_become_arg = local.ask_sudo_pass ? "--ask-become-pass" : ""
+  # Ansible ssh/become password, by default: ask password to user in stdin
+  ansible_password_arg = local.require_ask_pass ? "-kK" : ""
 
   # Pass provider FPGA driver to Ansible if any
   ansible_provider_driver = local.provider_required_driver == "" ? "" : "--extra-vars 'provider_required_driver=${local.provider_required_driver}'"
@@ -44,7 +44,7 @@ locals {
   ansible_user = local.remote_user == "" ? "" : "-u ${local.remote_user}"
 
   # Ansible-playbook CLI with disabling SSH host key checking and ensuring using a fixed Python version
-  ansible = "${var.ansible} playbook.yml ${local.ansible_user} ${local.ansible_private_key_arg} ${local.ansible_become_arg} -e 'ansible_python_interpreter=${local.ansible_python}' ${local.ansible_provider_driver}"
+  ansible = "${var.ansible} playbook.yml ${local.ansible_user} ${local.ansible_private_key_arg} ${local.ansible_password_arg} -e 'ansible_python_interpreter=${local.ansible_python}' ${local.ansible_provider_driver}"
 }
 
 # Host FPGA configuration

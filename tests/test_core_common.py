@@ -22,7 +22,7 @@ def test_json_read_write(tmpdir):
     Args:
         tmpdir (py.path.local) tmpdir pytest fixture
     """
-    from accelpy._common import json_read, json_write
+    from accelpy._json import json_write, json_read
     from accelpy.exceptions import ConfigurationException
 
     json_file = tmpdir.join('file.json')
@@ -45,7 +45,7 @@ def test_yaml_read_write(tmpdir):
     Args:
         tmpdir (py.path.local) tmpdir pytest fixture
     """
-    from accelpy._common import yaml_read, yaml_write
+    from accelpy._yaml import yaml_write, yaml_read
     from accelpy.exceptions import ConfigurationException
 
     yam_file = tmpdir.join('file.yml')

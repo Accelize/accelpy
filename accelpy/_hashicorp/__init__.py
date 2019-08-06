@@ -5,8 +5,8 @@ from os.path import join, isfile, dirname, getmtime
 from time import time
 
 from accelpy._common import (
-    HOME_DIR, call, json_read, json_write, get_sources_dirs,
-    get_sources_filters)
+    HOME_DIR, call, get_sources_dirs, get_sources_filters)
+from accelpy._json import json_read, json_write
 from accelpy.exceptions import RuntimeException
 
 
@@ -16,10 +16,6 @@ class Utility:
 
     Args:
         config_dir (path-like object): Configuration directory.
-        provider (str): Provider name.
-        application_type (str): Application type.
-        user_config (path-like object): User configuration directory.
-        variables (dict): Utility variables.
     """
     # Memoized executable path
     _executable = None
@@ -31,14 +27,8 @@ class Utility:
     _EXTS_INCLUDE = ()
     _EXTS_EXCLUDE = ()
 
-    def __init__(self, config_dir,
-                 provider=None, application_type=None, variables=None,
-                 user_config=None):
+    def __init__(self, config_dir):
         self._config_dir = fsdecode(config_dir)
-        self._provider = provider or ''
-        self._variables = variables or dict()
-        self._application_type = application_type
-        self._user_config = user_config
 
     @classmethod
     def _name(cls):
@@ -288,18 +278,24 @@ class Utility:
                     cwd=self._config_dir, check=check, pipe_stdout=pipe_stdout,
                     **run_kwargs)
 
-    def _list_sources(self):
+    def _list_sources(self, provider, application_type, user_config):
         """
         List source files matching current configuration.
+
+        Args:
+            provider (str): Provider name.
+                Required only if no "host_id" provided.
+            application_type (str): Application type.
+            user_config (path-like object): User configuration directory.
+                Required only if no "host_id" provided.
 
         Yields:
             tuple of str: name and path to source files.
         """
-        names = get_sources_filters(self._provider, self._application_type)
+        names = get_sources_filters(provider, application_type)
         excludes = self._EXTS_EXCLUDE
         includes = self._EXTS_INCLUDE
-        for source_dir in get_sources_dirs(
-                dirname(self._FILE), self._user_config):
+        for source_dir in get_sources_dirs(dirname(self._FILE), user_config):
             with scandir(source_dir) as entries:
                 for entry in entries:
                     name = entry.name.lower()

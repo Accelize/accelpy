@@ -95,6 +95,6 @@ locals {
 # Uncomment and fill with the required size in GiB:
 /*
 locals {
-  spot_instance = "10"
+  root_volume_size = "10"
 }
 */

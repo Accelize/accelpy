@@ -14,7 +14,7 @@ def mock_application(source_dir, override=None):
     Returns:
         py.path.local: Application path.
     """
-    from accelpy._common import yaml_write
+    from accelpy._yaml import yaml_write
 
     application = source_dir.join('application.yml')
 
@@ -51,7 +51,7 @@ def test_lint(tmpdir):
     Args:
         tmpdir (py.path.local) tmpdir pytest fixture
     """
-    from accelpy._application import Application, lint
+    from accelpy._application import Application
     from accelpy.exceptions import ConfigurationException
 
     # Mock yaml definition file
@@ -141,7 +141,7 @@ fpga:
   image: image
 """)
     with pytest.raises(ConfigurationException):
-        lint(yml_file)
+        Application(yml_file)
 
     # Test: Missing mandatory value in default keys
     yml_file.write("""
@@ -156,7 +156,7 @@ fpga:
   image: image
 """)
     with pytest.raises(ConfigurationException):
-        lint(yml_file)
+        Application(yml_file)
 
     # Test: Missing mandatory value in environment keys
     yml_file.write("""
@@ -173,7 +173,7 @@ fpga:
   image: image
 """)
     with pytest.raises(ConfigurationException):
-        lint(yml_file)
+        Application(yml_file)
 
     # Test: Value not in list
     yml_file.write("""
@@ -196,7 +196,7 @@ fpga:
   image: image
 """)
     with pytest.raises(ConfigurationException):
-        lint(yml_file)
+        Application(yml_file)
 
     # Test: Bad value type
     yml_file.write("""
@@ -214,7 +214,7 @@ fpga:
   count: "1"
 """)
     with pytest.raises(ConfigurationException):
-        lint(yml_file)
+        Application(yml_file)
 
     # Test: Bad value type in list
     yml_file.write("""
@@ -233,7 +233,7 @@ fpga:
   count: 1
 """)
     with pytest.raises(ConfigurationException):
-        lint(yml_file)
+        Application(yml_file)
 
     # Test: List of values
     yml_file.write("""
@@ -251,7 +251,7 @@ fpga:
     - image_slot1
   count: 1
 """)
-    lint(yml_file)
+    Application(yml_file)
 
     # Test: Auto list conversion
     yml_file.write("""
@@ -267,7 +267,7 @@ fpga:
   image: image_slot0
   count: 1
 """)
-    lint(yml_file)
+    Application(yml_file)
 
     # Test: top level list bad value
     yml_file.write("""
@@ -284,7 +284,7 @@ fpga:
   count: 1
 """)
     with pytest.raises(ConfigurationException):
-        lint(yml_file)
+        Application(yml_file)
 
     # Test: Extra section should not raise
     yml_file.write("""
@@ -303,7 +303,7 @@ extra_section:
   extra_key: value
 """)
     with pytest.raises(ConfigurationException):
-        lint(yml_file)
+        Application(yml_file)
 
     # Test: Extra key should raise
     yml_file.write("""
@@ -320,7 +320,7 @@ fpga:
   extra_key: value
 """)
     with pytest.raises(ConfigurationException):
-        lint(yml_file)
+        Application(yml_file)
 
     # Test: Extra key should raise in environment
     yml_file.write("""
@@ -338,4 +338,4 @@ fpga:
     extra_key: value
 """)
     with pytest.raises(ConfigurationException):
-        lint(yml_file)
+        Application(yml_file)

@@ -1,8 +1,6 @@
 # coding=utf-8
 """Global configuration"""
 from importlib import import_module as _import_module
-from json import dump as _json_dump, load as _json_load
-from json.decoder import JSONDecodeError as _JSONDecodeError
 from os import (fsdecode as _fsdecode, symlink as _symlink, chmod as _chmod,
                 makedirs as _makesdirs, scandir as _scandir,
                 environ as _environ)
@@ -10,20 +8,9 @@ from os.path import (
     expanduser as _expanduser, isdir as _isdir, realpath as _realpath,
     join as _join, dirname as _dirname, basename as _basename,
     isfile as _isfile, splitext as _splitext)
-from collections.abc import Mapping as _Mapping
 from subprocess import run as _run, PIPE as _PIPE
 
-try:
-    # Use LibYAML if available
-    from yaml import CSafeLoader as _Loader, CDumper as _Dumper
-except ImportError:
-    # Else use pure-Python library
-    from yaml import SafeLoader as _Loader, Dumper as _Dumper
-from yaml import dump as _yaml_dump, load as _yaml_load, YAMLError as _YAMLError
-
-from accelpy.exceptions import (
-    RuntimeException as _RuntimeException,
-    ConfigurationException as _ConfigurationException)
+from accelpy.exceptions import RuntimeException as _RuntimeException
 
 # Cached value storage
 _cache = dict()
@@ -34,73 +21,6 @@ HOME_DIR = _expanduser('~/.accelize')
 # Ensure directory exists and have restricted access rights
 _makesdirs(HOME_DIR, exist_ok=True)
 _chmod(HOME_DIR, 0o700)
-
-
-def yaml_read(path):
-    """
-    Read a YAML file.
-
-    Args:
-        path (path-like object): Path to file to load.
-
-    Returns:
-        dict or list: Un-serialized content
-    """
-    path = _realpath(_fsdecode(path))
-    with open(path, 'rt') as file:
-        try:
-            return _yaml_load(file, Loader=_Loader)
-
-        except _YAMLError as exception:
-            raise _ConfigurationException(
-                f'Unable to read "{path}": {str(exception)}')
-
-
-def yaml_write(data, path, **kwargs):
-    """
-    Write a YAML file
-
-    Args:
-        data (dict or list): data to serialize.
-        path (path-like object): Path where save file.
-        kwargs: "yaml.dump" kwargs.
-    """
-    with open(_fsdecode(path), 'wt') as file:
-        _yaml_dump(data, file, Dumper=_Dumper, **kwargs)
-
-
-def json_read(path, **kwargs):
-    """
-    Read a JSON file.
-
-    Args:
-        path (path-like object): Path to file to load.
-        kwargs: "json.load" kwargs.
-
-    Returns:
-        dict or list: Un-serialized content
-    """
-    path = _realpath(_fsdecode(path))
-    with open(path, 'rt') as file:
-        try:
-            return _json_load(file, **kwargs)
-
-        except _JSONDecodeError as exception:
-            raise _ConfigurationException(
-                f'Unable to read "{path}": {str(exception)}')
-
-
-def json_write(data, path, **kwargs):
-    """
-    Write a JSON file
-
-    Args:
-        data (dict or list): data to serialize.
-        path (path-like object): Path where save file.
-        kwargs: "json.dump" kwargs.
-    """
-    with open(_fsdecode(path), 'wt') as file:
-        _json_dump(data, file, **kwargs)
 
 
 def recursive_update(to_update, update):
@@ -118,7 +38,7 @@ def recursive_update(to_update, update):
     """
     if update:
         for key, value in update.items():
-            if isinstance(value, _Mapping):
+            if isinstance(value, dict):
                 value = recursive_update(to_update.get(key, {}), value)
             to_update[key] = value
     return to_update
@@ -197,6 +117,7 @@ def get_sources_filters(provider, application):
     Returns:
         list of str: sources names
     """
+    provider = provider or ''
     return [key for key in
             ('common', provider.split(',')[0], application) if key]
 
