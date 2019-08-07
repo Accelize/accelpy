@@ -196,6 +196,17 @@ def _action_lint(args):
     Application(args.file)
 
 
+def _action_push(args):
+    """
+    Push application definition.
+
+    Args:
+        args (argparse.Namespace): CLI arguments.
+    """
+    from accelpy._application import Application
+    Application(args.file).push()
+
+
 def _run_command():
     """
     Command line entry point
@@ -203,25 +214,35 @@ def _run_command():
     from os import environ
     from argparse import ArgumentParser
     from argcomplete import autocomplete
+    from argcomplete.completers import ChoicesCompleter
 
-    # Mark as CLI
+    # Mark as CLI before import accelpy
     environ['ACCELPY_CLI'] = 'True'
-
-    # List existing hosts
     from accelpy import __version__
     from accelpy._host import _iter_hosts_names
-    hosts_names = tuple(_iter_hosts_names())
+    from accelpy._common import warn
 
-    # Creates command line argument parser
-    parser = ArgumentParser(
-        prog='accelpy',
-        description=f'Accelpy {__version__}')
+    # Common strings
+    name_help = 'Configuration name to use.'
+    desc = f'Accelpy {__version__}.'
 
+    # List existing hosts and eventually generate "init" warning
+    names = tuple(_iter_hosts_names())
+    names_completer = ChoicesCompleter(names)
+
+    if not names and not environ.get('ACCELPY_GENERATE_CLI_DOC'):
+        require_init = warn('No configuration found, run "accelpy init" first.')
+        name_help = ' '.join((name_help, require_init))
+        desc = ' '.join((desc, require_init))
+
+    # Parser: "accelpy"
+    parser = ArgumentParser(prog='accelpy', description=desc)
     sub_parsers = parser.add_subparsers(
         dest='action', title='Commands',
         help='accelpy commands', description=
         'accelpy must perform one of the following commands:')
 
+    # Parser: "accelpy init"
     description = 'Create a new configuration.'
     action = sub_parsers.add_parser(
         'init', help=description, description=description)
@@ -231,35 +252,38 @@ def _run_command():
                              'generated name is returned as command output.')
     action.add_argument(
         '--application', '-a',
-        help='Path to application definition file.')
+        help='Application in format '
+             '"product_id:version" (or "product_id" for latest version) or '
+             'path to a local application definition file.')
     action.add_argument('--provider', '-p', help='Provider name.')
     action.add_argument(
         '--user_config', '-c',
         help='Extra user configuration directory. Always also use the '
              '"~./accelize" directory.')
 
-    name_help = 'Configuration name to use.'
-    if not hosts_names and not environ.get('ACCELPY_GENERATE_CLI_DOC'):
-        from accelpy._common import warn
-        name_help += warn(' No configuration found, run "accelpy init" first.')
-
+    # Parser: "accelpy plan"
     description = 'Plan the host infrastructure creation and show details.'
     action = sub_parsers.add_parser('plan', help=description,
                                     description=description)
-    action.add_argument('--name', '-n', help=name_help, choices=hosts_names)
+    action.add_argument(
+        '--name', '-n', help=name_help).completer = names_completer
 
+    # Parser: "accelpy apply"
     description = 'Create the host infrastructure.'
     action = sub_parsers.add_parser(
         'apply', help=description, description=description)
-    action.add_argument('--name', '-n', help=name_help, choices=hosts_names)
+    action.add_argument(
+        '--name', '-n', help=name_help).completer = names_completer
     action.add_argument(
         '--quiet', '-q', action='store_true',
         help='If specified, hide outputs.')
 
+    # Parser: "accelpy build"
     description = 'Create a virtual machine image of the configured host.'
     action = sub_parsers.add_parser(
         'build', help=description, description=description)
-    action.add_argument('--name', '-n', help=name_help, choices=hosts_names)
+    action.add_argument(
+        '--name', '-n', help=name_help).completer = names_completer
     action.add_argument(
         '--update_application', '-u', action='store_true',
         help='If applicable, update the application definition Yaml file to '
@@ -269,10 +293,12 @@ def _run_command():
         '--quiet', '-q', action='store_true',
         help='If specified, hide outputs.')
 
+    # Parser: "accelpy destroy"
     description = 'Destroy the host infrastructure.'
     action = sub_parsers.add_parser(
         'destroy', help=description, description=description)
-    action.add_argument('--name', '-n', help=name_help, choices=hosts_names)
+    action.add_argument(
+        '--name', '-n', help=name_help).completer = names_completer
     action.add_argument(
         '--quiet', '-q', action='store_true',
         help='If specified, hide outputs.')
@@ -280,34 +306,50 @@ def _run_command():
         '--delete', '-d', action='store_true',
         help='Delete configuration after command completion.')
 
+    # Parser: "accelpy ssh_private_key"
     description = 'Print the host SSH private key path.'
     action = sub_parsers.add_parser(
         'ssh_private_key', help=description, description=description)
-    action.add_argument('--name', '-n', help=name_help, choices=hosts_names)
+    action.add_argument(
+        '--name', '-n', help=name_help).completer = names_completer
 
+    # Parser: "accelpy ssh_user"
     description = 'Print the name of the user to use to connect with SSH'
     action = sub_parsers.add_parser(
         'ssh_user', help=description, description=description)
-    action.add_argument('--name', '-n', help=name_help, choices=hosts_names)
+    action.add_argument(
+        '--name', '-n', help=name_help).completer = names_completer
 
+    # Parser: "accelpy private_ip"
     description = 'Print the private IP address.'
     action = sub_parsers.add_parser(
         'private_ip', help=description, description=description)
-    action.add_argument('--name', '-n', help=name_help, choices=hosts_names)
+    action.add_argument(
+        '--name', '-n', help=name_help).completer = names_completer
 
+    # Parser: "accelpy public_ip"
     description = 'Print the public IP address.'
     action = sub_parsers.add_parser(
         'public_ip', help=description, description=description)
-    action.add_argument('--name', '-n', help=name_help, choices=hosts_names)
+    action.add_argument(
+        '--name', '-n', help=name_help).completer = names_completer
 
+    # Parser: "accelpy list"
     description = 'List available host configurations.'
     sub_parsers.add_parser(
         'list', help=description, description=description)
 
+    # Parser: "accelpy lint"
     description = 'lint an application definition file.'
     action = sub_parsers.add_parser(
         'lint', help=description, description=description)
     action.add_argument('file', help='Path to file to lint.')
+
+    # Parser: "accelpy push"
+    description = 'Push an application definition file to Accelize web service.'
+    action = sub_parsers.add_parser(
+        'push', help=description, description=description)
+    action.add_argument('file', help='Path to file to push.')
 
     # Enable autocompletion
     autocomplete(parser)

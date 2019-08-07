@@ -11,15 +11,14 @@ python:
 install:
     # Python environment
     - "python -m pip install -U --upgrade-strategy eager setuptools pip wheel
-       pytest-cov pytest-xdist codecov molecule[docker] --pre"
+       pytest-cov codecov molecule[docker] --pre"
 
     # Installs all package dependencies
     - "python -m pip install -e ."
 
 script:
     # Runs tests
-    - 'pytest -vs -m "not require_csp" --cov=accelpy --cov-report=term-missing
-      -n auto --dist=loadscope'
+    - 'pytest -v -m "not require_csp" --cov=accelpy --cov-report=term-missing'
 
 after_success:
     # Sends coverage to codecov.io

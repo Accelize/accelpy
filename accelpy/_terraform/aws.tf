@@ -4,7 +4,7 @@ Amazon Web Service: Common configuration
 
 # AWS creadential, by default use Terraform autodetection
 provider "aws" {
-  region = local.provider_params[1]
+  region = local.region
 }
 
 # FPGA instance types
@@ -12,11 +12,13 @@ provider "aws" {
 locals {
   # Define instance type based on required FPGA count
   instances_types = {
-    "1" = "f1.2xlarge"
-    "2" = "f1.4xlarge"
-    "8" = "f1.16xlarge"
+    "f1" = {
+      "1" = "f1.2xlarge"
+      "2" = "f1.4xlarge"
+      "8" = "f1.16xlarge"
+    }
   }
-  instance_type = [for fpga_count, type in local.instances_types : type if fpga_count >= var.fpga_count][0]
+  instance_type = [for fpga_count, type in local.instances_types[local.instance_type_family] : type if fpga_count >= var.fpga_count][0]
 
   # AWS use its specific FPGA driver
   provider_required_driver = "aws_f1"
@@ -43,6 +45,10 @@ locals {
 
   # AWS AMI does not require ssh/become password by default
   require_ask_pass = false
+
+  # Provider info
+  region = local.provider_params[1]
+  instance_type_family = local.provider_params[2]
 }
 
 # Instance image and sudo user name

@@ -16,13 +16,17 @@ Region selection
 AWS require to select a region when provisioning and creating an image.
 
 The region selection is done with the provider parameter by specifying it in
-the format: `aws,region`.
+the format: `aws,region,instance_type_family`.
 
-By example to use the `eu-west-1` region:
+Available instance types are:
+
+* `f1`: F1 instances with Xilinx Virtex UltraScale+ VU9P FPGAs.
+
+By example to use the *eu-west-1* region with F1 instances:
 
 .. code-block:: bash
 
-    accelpy init -a my_app -p aws,eu-west-1
+    accelpy init -a my_app -p aws,eu-west-1,f1
 
 .. note:: In the application definition file, the AWS provider require also
           to be specified with the region. This allow to specify different AMI

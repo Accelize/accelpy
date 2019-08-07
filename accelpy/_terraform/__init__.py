@@ -5,8 +5,7 @@ from os import makedirs, remove, environ
 from os.path import join, isfile
 from time import sleep
 
-from accelpy._common import symlink, no_color
-from accelpy._json import json_write
+from accelpy._common import symlink, no_color, json_write
 from accelpy._hashicorp import Utility
 from accelpy.exceptions import RuntimeException
 

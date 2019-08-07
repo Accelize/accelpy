@@ -7,10 +7,16 @@ FPGA hosts thought SSH.
 board selection
 ---------------
 
-To correctly provision an host, the FPGA board typ is required.
+To correctly provision an host, the FPGA board type is required.
 
 The board type selection is done with the provider parameter by specifying it in
 the format: `host,board_type`.
+
+By convention the board type value is set to following values depending the
+FPGA vendor:
+
+* Xilinx: shell (DSA) version of the board,
+  example: `xilinx_u200_xdma_201820_1`.
 
 Configuration
 -------------

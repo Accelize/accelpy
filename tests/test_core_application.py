@@ -20,7 +20,7 @@ def mock_application(source_dir, override=None):
 
     content = {
         'application': {
-            'name': 'my_app',
+            'product_id': 'my_product_id',
             'version': '1.0.0'
         },
         'package': {
@@ -60,7 +60,7 @@ def test_lint(tmpdir):
     # Test: Load valid file
     yml_file.write("""
 application:
-  name: my_app
+  product_id: my_product_id
   version: 1.0.0
 
 package:
@@ -91,7 +91,7 @@ fpga:
     app = Application(yml_file)
 
     # Test: __getitem__
-    assert app['application']['name'] == 'my_app'
+    assert app['application']['product_id'] == 'my_product_id'
 
     # Test section _node
     assert isinstance(app['firewall_rules'], list)
@@ -114,7 +114,7 @@ fpga:
     # Test: Load valid file with missing not mandatory section
     yml_file.write("""
 application:
-  name: my_app
+  product_id: my_product_id
   version: 1.0.0
 
 package:
@@ -130,7 +130,7 @@ fpga:
     # Test: Load bad section type
     yml_file.write("""
 application:
-  - name: my_app
+  - product_id: my_product_id
     version: 1.0.0
 
 package:
@@ -146,7 +146,7 @@ fpga:
     # Test: Missing mandatory value in default keys
     yml_file.write("""
 application:
-  name: my_app
+  product_id: my_product_id
 
 package:
   # Missing image
@@ -161,7 +161,7 @@ fpga:
     # Test: Missing mandatory value in environment keys
     yml_file.write("""
 application:
-  name: my_app
+  product_id: my_product_id
   version: 1.0.0
 
 package:
@@ -178,7 +178,7 @@ fpga:
     # Test: Value not in list
     yml_file.write("""
 application:
-  name: my_app
+  product_id: my_product_id
   version: 1.0.0
 
 package:
@@ -201,7 +201,7 @@ fpga:
     # Test: Bad value type
     yml_file.write("""
 application:
-  name: my_app
+  product_id: my_product_id
   version: 1.0.0
 
 package:
@@ -219,7 +219,7 @@ fpga:
     # Test: Bad value type in list
     yml_file.write("""
 application:
-  name: my_app
+  product_id: my_product_id
   version: 1.0.0
 
 package:
@@ -238,7 +238,7 @@ fpga:
     # Test: List of values
     yml_file.write("""
 application:
-  name: my_app
+  product_id: my_product_id
   version: 1.0.0
 
 package:
@@ -256,7 +256,7 @@ fpga:
     # Test: Auto list conversion
     yml_file.write("""
 application:
-  name: my_app
+  product_id: my_product_id
   version: 1.0.0
 
 package:
@@ -272,7 +272,7 @@ fpga:
     # Test: top level list bad value
     yml_file.write("""
 application:
-  name: my_app
+  product_id: my_product_id
   version: 1.0.0
 
 package:
@@ -289,7 +289,7 @@ fpga:
     # Test: Extra section should not raise
     yml_file.write("""
 application:
-  name: my_app
+  product_id: my_product_id
   version: 1.0.0
 
 package:
@@ -308,7 +308,7 @@ extra_section:
     # Test: Extra key should raise
     yml_file.write("""
 application:
-  name: my_app
+  product_id: my_product_id
   version: 1.0.0
 
 package:
@@ -325,7 +325,7 @@ fpga:
     # Test: Extra key should raise in environment
     yml_file.write("""
 application:
-  name: my_app
+  product_id: my_product_id
   version: 1.0.0
 
 package:

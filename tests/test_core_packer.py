@@ -12,7 +12,7 @@ def mock_packer_provider(source_dir):
     Returns:
         str: artifact
     """
-    from accelpy._json import json_write
+    from accelpy._common import json_write
     artifact = "artifact.json"
     json_write({
         "builders": [{
@@ -30,7 +30,7 @@ def test_packer(tmpdir):
     Args:
         tmpdir (py.path.local) tmpdir pytest fixture
     """
-    from accelpy._json import json_read
+    from accelpy._common import json_read
     from accelpy._packer import Packer
 
     from tests.test_core_ansible import mock_ansible_local

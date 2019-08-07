@@ -14,7 +14,7 @@ def mock_terraform_provider(source_dir, **variables):
     Returns:
         dict: Input variables.
     """
-    from accelpy._json import json_write
+    from accelpy._common import json_write
 
     local_variables = {
         "host_public_ip": "127.0.0.1",

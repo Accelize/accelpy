@@ -113,7 +113,8 @@ Dependencies found in the `meta/main.yml` or roles are managed automatically:
 It is possible to override Ansible variables to change software provisioning
 behavior.
 
-An override file is available to easily set common options:
+An override file is available to easily set common options, like enabling extra
+security hardening roles:
 
 :download:`common.user_override.yml <../accelpy/_ansible/common.user_override.yml>`.
 

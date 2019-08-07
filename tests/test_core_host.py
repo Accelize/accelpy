@@ -122,7 +122,7 @@ def test_host(tmpdir):
         assert not config_dir.join(host.name).exists()
 
         # Test: Clean up in case of initialization error
-        with pytest.raises(FileNotFoundError):
+        with pytest.raises(ConfigurationException):
             Host(application='path_not_exists', user_config=source_dir,
                  name='should_be_cleaned')
         assert not config_dir.join('should_be_cleaned').exists()

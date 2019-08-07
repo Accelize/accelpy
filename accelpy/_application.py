@@ -2,6 +2,7 @@
 """Application Definition"""
 from os import fsdecode
 
+from accelpy._common import request
 from accelpy._yaml import yaml_read, yaml_write
 from accelpy.exceptions import ConfigurationException
 
@@ -9,9 +10,9 @@ from accelpy.exceptions import ConfigurationException
 FORMAT = {
     'application': {
         '_node': dict,
-        'name': dict(
+        'product_id': dict(
             required=True,
-            desc='Application name'),
+            desc='Product ID linked to the application'),
         'version': dict(
             required=True,
             desc='Application version'),
@@ -31,7 +32,7 @@ FORMAT = {
         '_node': dict,
         'type': dict(
             default='container_image',
-            values=('container_image', 'vm_image'),
+            values=('container_image', 'vm_image', 'kubernetes_deployment'),
             desc='Type of package.'),
         'name': dict(
             required=True,
@@ -112,16 +113,82 @@ class Application:
     Application definition
 
     Args:
-        definition_file (path-like object): Path to yaml definition file.
+        definition (path-like object or dict):
+            Path to yaml definition file or dict of the content of the
+            definition.
     """
 
-    def __init__(self, definition_file):
-        self._path = fsdecode(definition_file)
+    def __init__(self, definition):
         self._environments = set()
-        self._definition = self._validate(yaml_read(self._path))
+
+        # Load from dict
+        if isinstance(definition, dict):
+            self._path = None
+
+        # Load from file
+        else:
+            self._path = fsdecode(definition)
+            definition = yaml_read(self._path)
+
+        self._definition = self._validate(definition)
 
     def __getitem__(self, key):
         return self._definition.__getitem__(key)
+
+    @classmethod
+    def from_id(cls, application):
+        """
+        Load application from Accelize web service.
+
+        Args:
+            application (str): Application if format "product_id:version" or
+                "product_id".
+
+        Returns:
+            Application: Application definition.
+        """
+        # Get product ID and version
+        try:
+            product_id, version = application.split(':', 1)
+        except ValueError:
+            product_id = application
+            version = None
+
+        # Get definition from server
+        response = request.query('/auth/getapplicationdefinition/',
+                                 dict(product_id=product_id, version=version))
+        return cls(response)
+
+    @staticmethod
+    def list():
+        """
+        List available applications on Accelize web service.
+
+        Returns:
+            list of str: products.
+        """
+        return request.query('/auth/listapplicationdefinitions/')
+
+    @staticmethod
+    def list_versions(product_id):
+        """
+        List available applications on Accelize web service.
+
+        Args:
+            product_id (str): Product ID linked to the application.
+
+        Returns:
+            list of str: versions.
+        """
+        return request.query('/auth/listapplicationdefinitionversions/',
+                             dict(product_id=product_id))
+
+    def push(self):
+        """
+        Push application definition on Accelize web service.
+        """
+        return request.query('/auth/pushapplicationdefinition/',
+                             self._definition, 'post')
 
     @property
     def environments(self):

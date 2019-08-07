@@ -1,6 +1,6 @@
 ---
 application:
-  name: kubernetes_node_test
+  product_id: kubernetes_node_test
   type: kubernetes_node
   version: 1.0.0
 
@@ -11,19 +11,19 @@ firewall_rules:
     direction: ingress
 
 fpga:
-  aws,eu-west-1:
+  aws,eu-west-1,f1:
     image: agfi-071909cc191313a51
   count: 1
 
 package:
-  name: accelize/accelpy-ci
-  version: container_service
-  type: container_image
+  aws,eu-west-1,f1:
+    name: https://raw.githubusercontent.com/Accelize/accelpy/master/tests/app_kubernetes_pod-aws_f1.yml
+  type: kubernetes_deployment
 
 accelize_drm:
   conf:
     design:
-      boardType: DRM_100
+      boardType: accelpy_testing
     licensing:
       url: https://master.metering.accelize.com
     drm:

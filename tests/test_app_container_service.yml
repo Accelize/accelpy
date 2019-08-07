@@ -1,6 +1,6 @@
 ---
 application:
-  name: container_service_test
+  product_id: container_service_test
   type: container_service
   version: 1.0.0
 
@@ -11,7 +11,7 @@ firewall_rules:
     direction: ingress
 
 fpga:
-  aws,eu-west-1:
+  aws,eu-west-1,f1:
     image: agfi-071909cc191313a51
   count: 1
 
@@ -23,7 +23,7 @@ package:
 accelize_drm:
   conf:
     design:
-      boardType: DRM_100
+      boardType: accelpy_testing
     licensing:
       url: https://master.metering.accelize.com
     drm:

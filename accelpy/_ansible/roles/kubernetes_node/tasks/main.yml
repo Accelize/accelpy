@@ -48,3 +48,7 @@
 - name: Ensure FPGA Kubernetes device plugin is enabled as deamonset
   command: kubectl create -f /etc/kubernetes/fpga-device-plugin.yml
   when: master_node | bool
+
+- name: Ensure Kubernetes deployment/pod is deployed
+  command: "kubectl apply -f {{ package_name }}"
+  when: master_node | bool

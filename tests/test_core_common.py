@@ -22,7 +22,7 @@ def test_json_read_write(tmpdir):
     Args:
         tmpdir (py.path.local) tmpdir pytest fixture
     """
-    from accelpy._json import json_write, json_read
+    from accelpy._common import json_write, json_read
     from accelpy.exceptions import ConfigurationException
 
     json_file = tmpdir.join('file.json')

@@ -2,8 +2,7 @@
 from os import chmod, fsdecode, makedirs, scandir, symlink
 from os.path import isabs, isdir, isfile, join, realpath
 
-from accelpy._common import HOME_DIR, get_sources_dirs
-from accelpy._json import json_write, json_read
+from accelpy._common import HOME_DIR, get_accelize_cred, json_read, json_write
 from accelpy.exceptions import ConfigurationException
 
 CONFIG_DIR = join(HOME_DIR, 'hosts')
@@ -44,7 +43,9 @@ class Host:
             If an host with this name already exists,
             its configuration will be loaded, else a new configuration will be
             created. If not specified, a random name will be generated.
-        application (path-like object): Path to application definition file.
+        application (str or path-like object): Application in format
+            "product_id:version" (or "product_id" for latest version) or
+            path to a local application definition file.
             Required only to create a new configuration.
         provider (str): Provider name.
             Required only to create a new configuration.
@@ -118,17 +119,14 @@ class Host:
         Create configuration.
 
         Args:
-            application (path-like object): Path to application definition file.
+            application (str or path-like object):
+                Application or path to application definition file.
             provider (str): Provider name.
             user_config (path-like object): User configuration directory.
         """
         # Ensure config is cleaned on creation error
         keep_config = self._keep_config
         self._keep_config = False
-
-        # Lazy import, because may not be always used
-        from concurrent.futures import ThreadPoolExecutor
-        from accelpy._ansible import Ansible
 
         # Create target configuration directory and remove access to other
         # users since Terraform state files may content sensible data and
@@ -141,11 +139,9 @@ class Host:
         json_write(dict(provider=provider, user_config=user_config),
                    self._user_parameters_json)
 
-        # Link application definition into configuration directory
-        symlink(realpath(fsdecode(application)), join(
-            self._config_dir, 'application.yml'))
+        # Get application and its definition
+        self._init_application_definition(application)
 
-        # Get values from application
         def app(section, key):
             """
             Get application value for specified provider
@@ -166,13 +162,13 @@ class Host:
         name = self._name
 
         # Check Accelize DRM Requirements
-        accelize_drm_conf_json = join(
-            self._config_dir, 'accelize_drm_conf.json')
-        accelize_drm_cred_json = join(self._config_dir, 'cred.json')
+        accelize_drm_cred_json = self._init_accelize_cred(user_config)
+        accelize_drm_conf_json = self._init_accelize_conf(
+            app('accelize_drm', 'conf'), accelize_drm_enable, provider)
 
-        self._init_accelize_drm(
-            accelize_drm_conf_json, accelize_drm_cred_json, user_config,
-            app('accelize_drm', 'conf'), accelize_drm_enable)
+        # Lazy import, because may not be always used
+        from concurrent.futures import ThreadPoolExecutor
+        from accelpy._ansible import Ansible
 
         # Set Ansible variables
         ansible_env = Ansible.environment()
@@ -235,21 +231,33 @@ class Host:
         # Restore keep config flag once configuration si completed
         self._keep_config = keep_config
 
-    @staticmethod
-    def _init_accelize_drm(
-            accelize_drm_conf_json, accelize_drm_cred_json, user_config,
-            accelize_drm_conf, accelize_drm_enable):
+    def _init_accelize_cred(self, user_config):
         """
-        Initialize Accelize DRM requirements
+        Initialize Accelize Credentials.
 
         Args:
-            accelize_drm_conf_json (str): Path to conf.json
-            accelize_drm_cred_json (str): Path to cred.json
             user_config (str): Path to user configuration directory
+
+        Returns:
+            str: Path to cred.json
+        """
+        accelize_drm_cred_json = join(self._config_dir, 'cred.json')
+        symlink(get_accelize_cred(user_config), accelize_drm_cred_json)
+        return accelize_drm_cred_json
+
+    def _init_accelize_conf(self,
+                            accelize_drm_conf, accelize_drm_enable, provider):
+        """
+        Initialize Accelize DRM Configuration.
+
+        Args:
             accelize_drm_conf (dict): conf.json content
             accelize_drm_enable (bool): True if service is enabled
-        """
+            provider (str): Provider.
 
+        Returns:
+            str: Path to conf.json
+        """
         # Create configuration file from application
         if accelize_drm_enable and not accelize_drm_conf:
             raise ConfigurationException(
@@ -257,22 +265,43 @@ class Host:
                 '"conf" value to be specified if "use_service" is '
                 'specified.')
 
+        accelize_drm_conf_json = join(
+            self._config_dir, 'accelize_drm_conf.json')
+
+        if provider:
+            # Set board type value to provider
+            try:
+                design = accelize_drm_conf['design']
+            except KeyError:
+                accelize_drm_conf['design'] = design = dict()
+            design['boardType'] = provider
+
         json_write(accelize_drm_conf, accelize_drm_conf_json)
 
-        # Get credentials file from user configuration
-        for src in get_sources_dirs(user_config):
+        return accelize_drm_conf_json
 
-            cred_path = join(src, 'cred.json')
+    def _init_application_definition(self, application):
+        """
+        Get remote or local application definition and save it locally.
 
-            if isfile(cred_path):
-                symlink(cred_path, accelize_drm_cred_json)
-                break
-        else:
-            raise ConfigurationException(
-                'No Accelize DRM credential found. Please, make sure to '
-                f'have your "cred.json" file installed in "{HOME_DIR}", '
-                f'current directory or path specified with the '
-                f'"user_config" argument.')
+        Args:
+            application (str or path-like object):
+                Application or path to application definition file.
+        """
+        dst_path = join(self._config_dir, 'application.yml')
+
+        # Try if application is a local path
+        src_path = realpath(fsdecode(application))
+
+        # Link local definition file in configuration directory
+        if isfile(src_path):
+            return symlink(src_path, dst_path)
+
+        # Lazy import: May not be used all time
+        from accelpy._application import Application
+
+        # Get application definition from accelize server
+        Application.from_id(application).save(dst_path)
 
     def plan(self):
         """

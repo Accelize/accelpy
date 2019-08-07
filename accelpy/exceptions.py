@@ -12,3 +12,7 @@ class ConfigurationException(AccelizeException):
 
 class RuntimeException(AccelizeException):
     """Runtime error"""
+
+
+class AuthenticationException(AccelizeException):
+    """Authentication error"""

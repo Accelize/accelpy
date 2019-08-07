@@ -25,8 +25,9 @@ This section define base information about the application.
 
 This section is a mapping of following key, values pairs:
 
-* `name` (string): **Required**. Name of the application. Will be the name used
-  to deploy the application.
+* `product_id` (string): **Required**. Product ID linked to the application.
+  The product ID can be found with the related product in your Accelize vendor
+  account on `Accelize portal <https://portal.accelize.com/>`_.
 * `version` (string): **Required**. Version of the application.
 * `type` (string): **Required**. Application type. The application type is used
   to filter configuration and use correct Ansible roles to deploy the
@@ -38,10 +39,10 @@ This section is a mapping of following key, values pairs:
 
 Example:
 
-.. code-block::yaml
+.. code-block:: yaml
 
     application:
-      name: my_application
+      product_id: my_product_id
       version: 1.0.2
       type: container_service
       variables:
@@ -55,11 +56,16 @@ This section define how the application is packaged and how to install it.
 
 This section is a mapping of following key, values pairs:
 
-* `type` (string): **Required**. Package type. Predefined package types are:
+* `type` (string): **Required**. Package type. Each application type support a
+     limited subset of package types. Predefined package types are:
 
     * `container_image`: A Docker or OCI container image.
-    * `vm_image`: A virtual machine image. Can be an ID, a path or an URL
-      depending the provider in use.
+    * `kubernetes_deployment`: URL to a Kubernetes deployment or pod
+      YAML or JSON file.
+    * `vm_image`: A virtual machine image. Can be an ID, or an URL
+      depending the provider in use. Using a virtual machine image disable the
+      Ansible provisioning. An image can be created from any other configuration
+      using `accelpy build`.
 
 * `name` (string): **Required**. The name or ID of the package to install.
 * `version` (string): The version of the package to install. If not specified,
@@ -71,7 +77,7 @@ This section is a mapping of following key, values pairs:
 
 Example:
 
-.. code-block::yaml
+.. code-block:: yaml
 
     package:
       type: container_image
@@ -104,7 +110,7 @@ Each rule is a mapping of following key, values pairs:
 
 Example:
 
-.. code-block::yaml
+.. code-block:: yaml
 
     firewall_rules:
       - start_port: 1000
@@ -122,13 +128,15 @@ Example:
 The FPGA section define all information required to configure the FPGA
 device(s).
 
+* `driver` (string): The FPGA driver to use. If not specified, default to the
+  Linux Kernel driver or the provider specific driver.
+  Possible values : `aws_f1` (AWS F1 instances only), `xilinx_xrt` (Xilinx XRT).
 * `image` (string or list of string): **Required**. The FPGA bitstream image to
   use to program the FPGA. Depending the provider this can be an ID, a path or
   an URL. If multiple FPGA are required, must be a list of FPGA bitstream (One
   for each FPGA slot).
-* `driver` (string): The FPGA driver to use. If not specified, default to the
-  Linux Kernel driver or the provider specific driver.
-  Possible values : `aws_f1` (AWS F1 instances only), `xilinx_xrt` (Xilinx XRT).
+  Possibles values: AGFI (AWS F1 instances), URL to a *.xclbin* file
+  (Xilinx XRT).
 * `driver_version` (string): The version of the FPGA driver to use. If not
   specified, use the latest version available.
 * `count` (int): The number of FPGA devices required to run the application.
@@ -136,7 +144,7 @@ device(s).
 
 Example:
 
-.. code-block::yaml
+.. code-block:: yaml
 
     fpga:
         image: path/to/my/image
@@ -154,7 +162,7 @@ This section define the DRM service configuration.
 * `conf` (mapping of strings): Content of Accelize DRM `conf.json`
   (YAML or JSON formatted).
 
-.. code-block::yaml
+.. code-block:: yaml
    :caption: Passing the Accelize DRM conf.json: YAML formatted
 
     accelize_drm:
@@ -167,7 +175,7 @@ This section define the DRM service configuration.
         design:
           boardType: ISV custom data
 
-.. code-block::yaml
+.. code-block:: yaml
    :caption: Passing the Accelize DRM conf.json: JSON formatted
 
     accelize_drm:
@@ -179,14 +187,14 @@ This section define the DRM service configuration.
           "frequency_mhz": 125,
            "drm_ctrl_base_addr": 0,
         },
-        "design": {
-          "boardType": "ISV custom data"
-        }
       }
 
 .. warning:: To use the Accelize DRM service, the application must not tries to
              manage the programmed FPGA bitstream. The service will program the
              FPGA itself before licensing it.
+
+.. note:: The *boardType* key of the *design* section of the configuration file
+          is dynamically set to the provider used at runtime.
 
 Provider specific override
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -199,7 +207,7 @@ mandatory.
 
 Example:
 
-.. code-block::yaml
+.. code-block:: yaml
 
     package:
       # The container image will be used by default
@@ -208,7 +216,7 @@ Example:
 
       # This override replace the package type and name for AWS provider on
       # specified regions
-      aws,eu-west-1:
+      aws,eu-west-1,f1:
         type: vm_image
         name: ami-01010101010
 
@@ -217,15 +225,24 @@ Example:
         name: ami-10101010101
 
     fpga:
-      # The XDMA driver will always be used because not overridden
-      driver: xdma
+      # The Xilinx XRT driver will always be used because not overridden
+      driver: xilinx_xrt
 
-      # Different FPGA image are used for each AWS region
-      aws,eu-west-1:
+      # Different FPGA image are used for each AWS region, and the driver
+      # used on AWS need to be specified:
+      aws,eu-west-1,f1:
         image: agfi-01010101010
+        driver: aws_f1
 
       aws,eu-west-2:
         image: agfi-10101010101
+        driver: aws_f1
+
+      # This specify the image to use on a bare metal host with a specific kind
+      # of FPGA board
+      host,xilinx_u200_xdma_201820_1:
+         image: https://my_domain.com/my_fpga_image.xclbin
+         driver_version: 2018.3
 
       # No default FPGA image is provided. The application can only be used on
       # other providers.

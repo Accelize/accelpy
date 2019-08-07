@@ -6,6 +6,27 @@ The application is a container infinitely running in background.
 The application manager is a systemd service that run the container once on
 boot.
 
+Application definition
+----------------------
+
+This application type support the following package types:
+
+* `container_image`: A container image.
+* `vm_image`: An image of an already provisioned virtual machine.
+
+Example snippet of application definition file:
+
+.. code-block:: yaml
+
+   application:
+     name: my_application
+     version: 1.0.2
+     type: container_service
+
+   package:
+     name: my_docker_account/my_image
+     type: container_image
+
 Container configuration
 -----------------------
 
@@ -24,12 +45,12 @@ Rootless mode
 -------------
 
 The rootless mode use Podman instead of Docker to run the container as
-unprivileged user instead of root. The improve the security.
+unprivileged user instead of root. This improve the security.
 
 The rootless mode can be enabled in the application definition with the
 `rootless` variable:
 
-.. code-block::yaml
+.. code-block:: yaml
 
     application:
       name: my_application
@@ -39,7 +60,7 @@ The rootless mode can be enabled in the application definition with the
         # Enable rootless mode
         rootless: true
 
-To run in rootless mode, the container also requires to fit the following
+To run in rootless mode, the container also needs to fit the following
 requirement:
 
 * The application must be run by an user different than root with UID 1001 and
@@ -58,6 +79,13 @@ requirement:
     :caption: From the Accelize base image (User already exists)
 
     USER appuser
+
+Security notice
+---------------
+
+Except in rootless mode, depending on the configuration, the container may be
+run in `privileged` mode to have FPGA access. This means that the container run
+as `root` on your host.
 
 How it work
 -----------

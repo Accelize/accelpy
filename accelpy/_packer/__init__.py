@@ -2,8 +2,7 @@
 """Packer configuration"""
 from os.path import join
 
-from accelpy._common import recursive_update, no_color
-from accelpy._json import json_read, json_write
+from accelpy._common import recursive_update, no_color, json_read, json_write
 from accelpy._hashicorp import Utility
 
 

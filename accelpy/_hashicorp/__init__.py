@@ -5,8 +5,8 @@ from os.path import join, isfile, dirname, getmtime
 from time import time
 
 from accelpy._common import (
-    HOME_DIR, call, get_sources_dirs, get_sources_filters)
-from accelpy._json import json_read, json_write
+    HOME_DIR, call, get_sources_dirs, get_sources_filters, json_read,
+    json_write)
 from accelpy.exceptions import RuntimeException
 
 

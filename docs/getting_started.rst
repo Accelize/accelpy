@@ -21,7 +21,7 @@ The installation is performed using Pip:
 
 To enable bash autocompletion, add the following line in your `~/.bashrc`:
 
-.. code-block::bash
+.. code-block:: bash
 
     eval "$(register-python-argcomplete accelpy)"
 

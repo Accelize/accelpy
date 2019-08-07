@@ -1,6 +1,8 @@
 # coding=utf-8
 """Global configuration"""
 from importlib import import_module as _import_module
+from json import (load as _json_load, JSONDecodeError as _JSONDecodeError,
+                  dump as _json_dump)
 from os import (fsdecode as _fsdecode, symlink as _symlink, chmod as _chmod,
                 makedirs as _makesdirs, scandir as _scandir,
                 environ as _environ)
@@ -9,8 +11,12 @@ from os.path import (
     join as _join, dirname as _dirname, basename as _basename,
     isfile as _isfile, splitext as _splitext)
 from subprocess import run as _run, PIPE as _PIPE
+from time import time as _time
 
-from accelpy.exceptions import RuntimeException as _RuntimeException
+from accelpy.exceptions import (
+    RuntimeException as _RuntimeException,
+    AuthenticationException as _AuthenticationException,
+    ConfigurationException as _ConfigurationException)
 
 # Cached value storage
 _cache = dict()
@@ -18,9 +24,46 @@ _cache = dict()
 #: User configuration directory
 HOME_DIR = _expanduser('~/.accelize')
 
+#: Accelize endpoint
+ACCELIZE_ENDPOINT = 'https://master.metering.accelize.com'
+
 # Ensure directory exists and have restricted access rights
 _makesdirs(HOME_DIR, exist_ok=True)
 _chmod(HOME_DIR, 0o700)
+
+
+def json_read(path, **kwargs):
+    """
+    Read a JSON file.
+
+    Args:
+        path (path-like object): Path to file to load.
+        kwargs: "json.load" kwargs.
+
+    Returns:
+        dict or list: Un-serialized content
+    """
+    path = _realpath(_fsdecode(path))
+    with open(path, 'rt') as file:
+        try:
+            return _json_load(file, **kwargs)
+
+        except _JSONDecodeError as exception:
+            raise _ConfigurationException(
+                f'Unable to read "{path}": {str(exception)}')
+
+
+def json_write(data, path, **kwargs):
+    """
+    Write a JSON file
+
+    Args:
+        data (dict or list): data to serialize.
+        path (path-like object): Path where save file.
+        kwargs: "json.dump" kwargs.
+    """
+    with open(_fsdecode(path), 'wt') as file:
+        _json_dump(data, file, **kwargs)
 
 
 def recursive_update(to_update, update):
@@ -264,3 +307,126 @@ def warn(text):
         str: Colored text.
     """
     return color_str(text, 'YELLOW')
+
+
+def get_accelize_cred(*src):
+    """
+    Initialize Accelize Credentials.
+
+    Args:
+        src (str): Directories.
+
+    Returns:
+        str: Path to cred.json
+    """
+    for src in get_sources_dirs(*src):
+        cred_path = _join(src, 'cred.json')
+        if _isfile(cred_path):
+            return cred_path
+
+    raise _ConfigurationException(
+        'No Accelize DRM credential found. Please, make sure to have your '
+        f'"cred.json" file installed in "{HOME_DIR}" or current directory')
+
+
+class _Request:
+    """
+    Request to accelize server.
+    """
+    _TIMEOUT = 10
+
+    def __init__(self):
+        self._token_expire = None
+        self._token = None
+        self._session = None
+
+    def _get_session(self):
+        """
+        Requests Session
+
+        Returns:
+            requests.Session
+        """
+        if self._session is None:
+            # Lazy import, may never be called
+            from requests import Session
+            self._session = Session()
+
+        return self._session
+
+    def query(self, path, data=None, method='get'):
+        """
+        Performs a query.
+
+        Args:
+            path (str): URL path
+            data (dict): data.
+            method (str): Request method.
+
+        Returns:
+            dict or list: Response.
+        """
+        retried = False
+
+        while True:
+            # Get response
+            response = getattr(self._get_session(), method)(
+                ACCELIZE_ENDPOINT + path, data=data,
+                headers={"Authorization": "Bearer " + self._get_token(),
+                         "Content-Type": "application/json",
+                         "Accept": "application/vnd.accelize.v1+json"},
+                timeout=self._TIMEOUT)
+
+            # Token may be invalid
+            if response.status_code == 401 and not retried:
+                self._token = None
+                self._token_expire = None
+                retried = True
+                continue
+
+            elif response.status_code != 200:
+                raise _ConfigurationException(response.text)
+
+            return response.json()
+
+    def _get_token(self):
+        """
+        Get Accelize access token from credentials.
+
+        Returns:
+            str: Access token.
+
+        Raises:
+            apyfal.exceptions.ClientAuthenticationException:
+                User credential are not valid.
+        """
+        # Check if token expired
+        if self._token_expire and self._token_expire > _time():
+            self._token = None
+
+        # Get token
+        if self._token is None:
+
+            credentials = json_read(get_accelize_cred())
+            client_id = credentials['client_id']
+            client_secret = credentials['client_secret']
+
+            response = self._get_session().post(
+                f'{ACCELIZE_ENDPOINT}/o/token/',
+                data={"grant_type": "client_credentials"},
+                auth=(client_id, client_secret),
+                timeout=self._TIMEOUT)
+
+            if response.status_code != 200:
+                raise _AuthenticationException(
+                    f'Unable to authenticate client ID starting by '
+                    f'"{client_id[:10]}":\n{response.text}')
+
+            access = response.json()
+            self._token = access['access_token']
+            self._token_expire = _time() + access['expires_in'] - 1
+
+        return self._token
+
+
+request = _Request()

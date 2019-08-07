@@ -1,6 +1,6 @@
 ---
 application:
-  name: existing_host_test
+  product_id: existing_host_test
   type: container_service
   version: 1.0.0
 
@@ -23,7 +23,7 @@ package:
 accelize_drm:
   conf:
     design:
-      boardType: DRM_100
+      boardType: accelpy_testing
     licensing:
       url: https://master.metering.accelize.com
     drm:
