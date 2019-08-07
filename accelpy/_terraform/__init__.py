@@ -82,7 +82,7 @@ class Terraform(Utility):
 
         # Initialize Terraform
         self._exec('init', self._no_color, '-input=false', pipe_stdout=True,
-                   env=self._exec_env)
+                   env=self._exec_env, retries=3)
 
     @property
     def _exec_env(self):

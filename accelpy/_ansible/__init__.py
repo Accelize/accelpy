@@ -219,7 +219,7 @@ class Ansible:
                         futures.append(executor.submit(
                             self._ansible, 'install',
                             f'--roles-path={temp_dir.name}', role,
-                            utility='galaxy', pipe_stdout=True))
+                            utility='galaxy', pipe_stdout=True, retries=3))
 
                 for future in futures:
                     future.result()

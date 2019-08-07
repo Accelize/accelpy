@@ -12,10 +12,13 @@
       "ansible_env_vars": [
         "ANSIBLE_HOST_KEY_CHECKING=False",
         "ANSIBLE_NOCOLOR=True",
+        "ANSIBLE_FORCE_COLOR=False",
         "ANSIBLE_DEPRECATION_WARNINGS=False",
         "ANSIBLE_DISPLAY_SKIPPED_HOSTS=False",
         "ANSIBLE_DISPLAY_OK_HOSTS=False",
-        "ANSIBLE_ACTION_WARNINGS=False"
+        "ANSIBLE_ACTION_WARNINGS=False",
+        "ANSIBLE_PIPELINING=True",
+        "ANSIBLE_SSH_ARGS=\"-o ControlMaster=auto -o ControlPersist=60s\""
       ],
       "extra_arguments": [
         "--extra-vars",

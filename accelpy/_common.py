@@ -44,7 +44,7 @@ def recursive_update(to_update, update):
     return to_update
 
 
-def call(command, check=True, pipe_stdout=False, **run_kwargs):
+def call(command, check=True, pipe_stdout=False, retries=0, **run_kwargs):
     """
     Call command in subprocess.
 
@@ -55,6 +55,7 @@ def call(command, check=True, pipe_stdout=False, **run_kwargs):
         pipe_stdout (bool): If True, redirect stdout into a pipe, this allow to
             hide outputs from sys.stdout and permit to retrieve stdout as
             "result.stdout".
+        retries (int): If True, retry this number of time on error.
 
     Returns:
         subprocess.CompletedProcess: Utility call result.
@@ -62,7 +63,15 @@ def call(command, check=True, pipe_stdout=False, **run_kwargs):
     if pipe_stdout:
         run_kwargs.setdefault('stdout', _PIPE)
 
-    result = _run(command, universal_newlines=True, stderr=_PIPE, **run_kwargs)
+    retried = 0
+    while True:
+        result = _run(command, universal_newlines=True, stderr=_PIPE,
+                      **run_kwargs)
+
+        if result.returncode and retried < retries:
+            retried += 1
+            continue
+        break
 
     if check and result.returncode:
         raise _RuntimeException('\n'.join((
