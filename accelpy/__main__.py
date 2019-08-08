@@ -207,6 +207,34 @@ def _action_push(args):
     Application(args.file).push()
 
 
+def _application_completer(prefix, parsed_args, **_):
+    """
+    Autocomplete "accelpy init --application"
+
+    Args:
+        prefix (str):
+        parsed_args (argparse.Namespace):
+
+    Returns:
+        list of str: applications
+    """
+    return []
+
+
+def _provider_completer(prefix, parsed_args, **_):
+    """
+    Autocomplete "accelpy init --provider"
+
+    Args:
+        prefix (str):
+        parsed_args (argparse.Namespace):
+
+    Returns:
+        list of str: providers
+    """
+    return []
+
+
 def _run_command():
     """
     Command line entry point
@@ -254,8 +282,11 @@ def _run_command():
         '--application', '-a',
         help='Application in format '
              '"product_id:version" (or "product_id" for latest version) or '
-             'path to a local application definition file.')
-    action.add_argument('--provider', '-p', help='Provider name.')
+             'path to a local application definition file.'
+    ).completer = _application_completer
+    action.add_argument(
+        '--provider', '-p', help='Provider name.'
+    ).completer = _provider_completer
     action.add_argument(
         '--user_config', '-c',
         help='Extra user configuration directory. Always also use the '

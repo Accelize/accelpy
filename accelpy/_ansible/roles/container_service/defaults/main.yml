@@ -1,3 +1,6 @@
 ---
 # Enable fully rootless container mode using Podman
 rootless: false
+
+# Force the use of container privileged mode
+privileged: true

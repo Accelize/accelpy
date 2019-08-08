@@ -27,6 +27,15 @@ Example snippet of application definition file:
      name: my_docker_account/my_image
      type: container_image
 
+Variables
+~~~~~~~~~
+
+This application support following variables:
+
+* `rootless`: Enable rootless mode (See below).
+* `privileged`: In non rootless mode, force the use of the container privileged
+  mode.
+
 Container configuration
 -----------------------
 
