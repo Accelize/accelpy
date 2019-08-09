@@ -10,6 +10,9 @@ spec:
   containers:
   - name: my-pod
     image: accelize/accelpy-ci:container_service
+    ports:
+      - containerPort: 8080
+    # FPGA container access
     securityContext:
       privileged: true
     resources:

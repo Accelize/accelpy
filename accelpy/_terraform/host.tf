@@ -29,6 +29,7 @@ locals {
 resource "null_resource" "cluster" {
   provisioner "local-exec" {
     # Configure using Ansible
-    command = local.require_provisioning ? "${local.ansible} -i '${local.host_ip_str},'" : "cd"
+    command = (local.require_provisioning ?
+    "${local.ansible} -i '${local.host_ip_str},'" : "cd")
   }
 }

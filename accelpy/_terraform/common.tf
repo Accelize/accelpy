@@ -12,7 +12,6 @@ following variables:
 - remote_os (string): Name of the OS to use on this provider.
   Set to "" if this provider cannont provision a specific OS.
 
-
 */
 
 terraform {
@@ -28,23 +27,32 @@ variable "ansible" {
 }
 locals {
 
-  # Ansible Remote python to use: Python3 except on CentOS 7, tries to use auto if OS is not specified.
-  ansible_python = local.remote_os == "" ? "auto" : (local.remote_os == "centos_7" ? "/usr/bin/python" : "/usr/bin/python3")
+  # Ansible Remote python to use: Python3 except on CentOS 7, tries to use auto
+  # if OS is not specified.
+  ansible_python = (local.remote_os == "" ? "auto" :
+  (local.remote_os == "centos_7" ? "/usr/bin/python" : "/usr/bin/python3"))
 
   # Ansible ssh/become password, by default: ask password to user in stdin
   ansible_password_arg = local.require_ask_pass ? "-kK" : ""
 
   # Pass provider FPGA driver to Ansible if any
-  ansible_provider_driver = local.provider_required_driver == "" ? "" : "--extra-vars 'provider_required_driver=${local.provider_required_driver}'"
+  ansible_provider_driver = (local.provider_required_driver == "" ? "" :
+  "--extra-vars 'provider_required_driver=${local.provider_required_driver}'")
 
   # Pass SSH key to Ansible
-  ansible_private_key_arg = local.ssh_key_private_path == "" ? "" : "--private-key '${local.ssh_key_private_path}'"
+  ansible_private_key_arg = (local.ssh_key_private_path == "" ? "" :
+  "--private-key '${local.ssh_key_private_path}'")
 
   # Pass user to Ansible
   ansible_user = local.remote_user == "" ? "" : "-u ${local.remote_user}"
 
-  # Ansible-playbook CLI with disabling SSH host key checking and ensuring using a fixed Python version
-  ansible = "${var.ansible} playbook.yml ${local.ansible_user} ${local.ansible_private_key_arg} ${local.ansible_password_arg} -e 'ansible_python_interpreter=${local.ansible_python}' ${local.ansible_provider_driver}"
+  # Ansible-playbook CLI
+  ansible = <<-EOF
+    ${var.ansible} playbook.yml ${local.ansible_user} \
+    ${local.ansible_private_key_arg} ${local.ansible_password_arg} \
+    -e 'ansible_python_interpreter=${local.ansible_python}' \
+    ${local.ansible_provider_driver} \
+  EOF
 }
 
 # Host FPGA configuration
@@ -161,7 +169,10 @@ locals {
   firewall_ip_ranges = []
 
   # Computed firewall rules
-  firewall_rules = concat([for item in setproduct(var.firewall_rules, [for ip in concat(local.firewall_ip_ranges, [local.current_ip]) : { ip_range = ip }]) : merge(item...)], local.default_firewall_rules)
+  firewall_rules = concat([for item in setproduct(
+    var.firewall_rules,
+    [for ip in concat(local.firewall_ip_ranges, [local.current_ip]) :
+  { ip_range = ip }]) : merge(item...)], local.default_firewall_rules)
 }
 
 output "firewall_rules" {
@@ -174,16 +185,26 @@ output "firewall_rules" {
 locals {
   # Key pair name in provider
   ssh_key_name = ""
+
   # User provided private key PEM file path
   ssh_key_pem = ""
+
   # True if require to generated a new key pair
   ssh_key_generated = local.ssh_key_name == "" && local.ssh_key_pem == ""
+
   # Public key string in OpenSSH format
-  ssh_key_public = local.ssh_key_generated ? tls_private_key.ssh_key_generated[0].public_key_openssh : data.tls_public_key.ssh_key_pem[0].public_key_openssh
+  ssh_key_public = (local.ssh_key_generated ?
+    tls_private_key.ssh_key_generated[0].public_key_openssh :
+  data.tls_public_key.ssh_key_pem[0].public_key_openssh)
+
   # Private key string in PEM format
-  ssh_key_private = local.ssh_key_generated ? tls_private_key.ssh_key_generated[0].private_key_pem : data.tls_public_key.ssh_key_pem[0].private_key_pem
+  ssh_key_private = (local.ssh_key_generated ?
+    tls_private_key.ssh_key_generated[0].private_key_pem :
+  data.tls_public_key.ssh_key_pem[0].private_key_pem)
+
   # Path to private key in PEM format
-  ssh_key_private_path = local.ssh_key_generated ? local_file.ssh_key_generated_pem[0].filename : local.ssh_key_pem
+  ssh_key_private_path = (local.ssh_key_generated ?
+  local_file.ssh_key_generated_pem[0].filename : local.ssh_key_pem)
 }
 
 data "tls_public_key" "ssh_key_pem" {

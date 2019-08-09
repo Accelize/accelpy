@@ -3,7 +3,7 @@ from os import chmod, fsdecode, makedirs, scandir, symlink
 from os.path import isabs, isdir, isfile, join, realpath
 
 from accelpy._common import HOME_DIR, get_accelize_cred, json_read, json_write
-from accelpy.exceptions import ConfigurationException
+from accelpy.exceptions import ConfigurationException, AccelizeException
 
 CONFIG_DIR = join(HOME_DIR, 'hosts')
 
@@ -515,7 +515,7 @@ class Host:
         """
         try:
             return bool(self._terraform.state_list())
-        except (ConfigurationException, FileNotFoundError):
+        except (AccelizeException, FileNotFoundError):
             return False
 
     def _clean_up(self):

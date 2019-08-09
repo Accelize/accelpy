@@ -125,3 +125,47 @@ def test_get_python_package_entry_point(tmpdir):
 
     finally:
         common._import_module = common_import_module
+
+
+def test_cli_cache(tmpdir):
+    """
+    Test CLI cache.
+
+    Args:
+        tmpdir (py.path.local) tmpdir pytest fixture
+    """
+    from time import time
+    from os import environ
+    import accelpy._common as common
+    from accelpy._common import get_cli_cache, set_cli_cache
+
+    # Mock cache
+    environ['ACCELPY_CLI'] = 'True'
+    common_cache_dir = common.CACHE_DIR
+    common.CACHE_DIR = str(tmpdir.join('cache').ensure(dir=True))
+
+    # Tests
+    try:
+        value = [0, 1, 2, 3]
+
+        # Test set cache
+        set_cli_cache('test1', value)
+
+        # Test get from get
+        assert get_cli_cache('test1') == value
+
+        # Test expiry from timestamp (Ensure always expired)
+        set_cli_cache('test2', value, expiry_timestamp=int(time()) - 1)
+        assert get_cli_cache('test2') is None
+
+        # Test expiry from seconds (Ensure always expired)
+        set_cli_cache('test3', value, expiry_seconds=-1)
+        assert get_cli_cache('test3') is None
+
+        # Test cache previously expired
+        assert get_cli_cache('test3') is None
+
+    # Clean up
+    finally:
+        common.CACHE_DIR = common_cache_dir
+        del environ['ACCELPY_CLI']

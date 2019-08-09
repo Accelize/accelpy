@@ -18,7 +18,10 @@ locals {
       "8" = "f1.16xlarge"
     }
   }
-  instance_type = [for fpga_count, type in local.instances_types[local.instance_type_family] : type if fpga_count >= var.fpga_count][0]
+  instance_type = [
+    for fpga_count,
+    type in local.instances_types[local.instance_type_family] :
+  type if fpga_count >= var.fpga_count][0]
 
   # AWS use its specific FPGA driver
   provider_required_driver = "aws_f1"
@@ -47,7 +50,7 @@ locals {
   require_ask_pass = false
 
   # Provider info
-  region = local.provider_params[1]
+  region               = local.provider_params[1]
   instance_type_family = local.provider_params[2]
 }
 
@@ -70,7 +73,8 @@ data "aws_ami" "image" {
 
 locals {
   remote_user = local.ami_users[local.remote_os]
-  ami         = var.package_vm_image != "" ? var.package_vm_image : data.aws_ami.image.id
+  ami = (
+  var.package_vm_image != "" ? var.package_vm_image : data.aws_ami.image.id)
 }
 
 # Security group
@@ -79,21 +83,25 @@ resource "aws_security_group" "security_group" {
   name = local.name
 
   dynamic "ingress" {
-    for_each = [for rule in local.firewall_rules : rule if rule.direction == "ingress"]
+    for_each = [for rule in local.firewall_rules :
+    rule if rule.direction == "ingress"]
     content {
-      from_port   = ingress.value.start_port
-      to_port     = ingress.value.end_port
-      protocol    = ingress.value.protocol == "all" ? "-1" : ingress.value.protocol
+      from_port = ingress.value.start_port
+      to_port   = ingress.value.end_port
+      protocol = (
+      ingress.value.protocol == "all" ? "-1" : ingress.value.protocol)
       cidr_blocks = [ingress.value.ip_range]
     }
   }
 
   dynamic "egress" {
-    for_each = [for rule in local.firewall_rules : rule if rule.direction == "egress"]
+    for_each = [for rule in local.firewall_rules :
+    rule if rule.direction == "egress"]
     content {
-      from_port   = egress.value.start_port
-      to_port     = egress.value.end_port
-      protocol    = egress.value.protocol == "all" ? "-1" : egress.value.protocol
+      from_port = egress.value.start_port
+      to_port   = egress.value.end_port
+      protocol = (
+      egress.value.protocol == "all" ? "-1" : egress.value.protocol)
       cidr_blocks = [egress.value.ip_range]
     }
   }
@@ -151,7 +159,8 @@ resource "aws_key_pair" "key_pair" {
 }
 
 locals {
-  key_name = local.ssh_key_name != "" ? local.ssh_key_name : aws_key_pair.key_pair[0].key_name
+  key_name = (local.ssh_key_name != "" ? local.ssh_key_name :
+  aws_key_pair.key_pair[0].key_name)
 }
 
 # Instance
@@ -194,7 +203,8 @@ resource "aws_instance" "instance" {
   }
   provisioner "local-exec" {
     # Configure using Ansible
-    command = local.require_provisioning ? "${local.ansible} -i '${self.public_ip},'" : "cd"
+    command = (local.require_provisioning ?
+    "${local.ansible} -i '${self.public_ip},'" : "cd")
   }
 }
 
@@ -221,7 +231,10 @@ resource "aws_spot_instance_request" "instance_spot" {
   provisioner "local-exec" {
     # "tags" apply to spot instance request and needs to be applied to instance
     # https://github.com/terraform-providers/terraform-provider-aws/issues/32
-    command = "aws ec2 create-tags --resources ${self.spot_instance_id} --tags Key=Name,Value=${local.name}"
+    command = <<-EOF
+    aws ec2 create-tags --region ${local.region} \
+    --resources ${self.spot_instance_id} --tags Key=Name,Value=${local.name} \
+    EOF
   }
 
   # Configure remote machine
@@ -237,12 +250,17 @@ resource "aws_spot_instance_request" "instance_spot" {
   }
   provisioner "local-exec" {
     # Configure using Ansible
-    command = local.require_provisioning ? "${local.ansible} -i '${self.public_ip},'" : "cd"
+    command = (local.require_provisioning ?
+    "${local.ansible} -i '${self.public_ip},'" : "cd")
   }
 }
 
 locals {
   # Output Instance IP addresses
-  host_public_ip  = local.spot_instance ? aws_spot_instance_request.instance_spot[0].public_ip : aws_instance.instance[0].public_ip
-  host_private_ip = local.spot_instance ? aws_spot_instance_request.instance_spot[0].private_ip : aws_instance.instance[0].private_ip
+  host_public_ip = (local.spot_instance ?
+    aws_spot_instance_request.instance_spot[0].public_ip :
+  aws_instance.instance[0].public_ip)
+  host_private_ip = (local.spot_instance ?
+    aws_spot_instance_request.instance_spot[0].private_ip :
+  aws_instance.instance[0].private_ip)
 }

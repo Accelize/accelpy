@@ -5,7 +5,7 @@ from json import (load as _json_load, JSONDecodeError as _JSONDecodeError,
                   dump as _json_dump)
 from os import (fsdecode as _fsdecode, symlink as _symlink, chmod as _chmod,
                 makedirs as _makesdirs, scandir as _scandir,
-                environ as _environ)
+                listdir as _listdir, environ as _environ, remove as _remove)
 from os.path import (
     expanduser as _expanduser, isdir as _isdir, realpath as _realpath,
     join as _join, dirname as _dirname, basename as _basename,
@@ -23,12 +23,13 @@ _cache = dict()
 
 #: User configuration directory
 HOME_DIR = _expanduser('~/.accelize')
+CACHE_DIR = _join(HOME_DIR, '.cache')
 
 #: Accelize endpoint
 ACCELIZE_ENDPOINT = 'https://master.metering.accelize.com'
 
 # Ensure directory exists and have restricted access rights
-_makesdirs(HOME_DIR, exist_ok=True)
+_makesdirs(CACHE_DIR, exist_ok=True)
 _chmod(HOME_DIR, 0o700)
 
 
@@ -253,6 +254,16 @@ def debug():
     return bool(_environ.get("ACCELPY_DEBUG", False))
 
 
+def is_cli():
+    """
+    Return True if CLI.
+
+    Returns:
+        bool: True if debug mode.
+    """
+    return bool(_environ.get("ACCELPY_CLI", False))
+
+
 def color_str(text, color):
     """
     Format text as colored output.
@@ -265,7 +276,7 @@ def color_str(text, color):
         str: Colored text.
     """
     # Disable color output if not in CLI mode or if color is disabled
-    if not bool(_environ.get("ACCELPY_CLI", False)) or no_color():
+    if not is_cli() or no_color():
         return text
 
     # Lazy import colorama only if required and skip if not available.
@@ -324,9 +335,85 @@ def get_accelize_cred(*src):
         if _isfile(cred_path):
             return cred_path
 
-    raise _ConfigurationException(
-        'No Accelize DRM credential found. Please, make sure to have your '
+    raise _AuthenticationException(
+        'No Accelize credential found. Please, make sure to have your '
         f'"cred.json" file installed in "{HOME_DIR}" or current directory')
+
+
+def hash_cli_name(name):
+    """
+    Convert name to SHA1 hashed name.
+
+    Args:
+        name (str): name.
+
+    Returns:
+        str: Hashed name.
+    """
+    from hashlib import blake2b
+    return blake2b(name.encode(), digest_size=32).hexdigest()
+
+
+def get_cli_cache(name):
+    """
+    Add an object to disk cache. Mainly used to avoid repeated web server
+    requests in CLI mode.
+
+    Args:
+        name (str): Cache name.
+
+    Returns:
+        dict or list or None: object, None if object is not cached.
+    """
+    if not is_cli():
+        return None
+
+    timestamp = _time()
+    cached_obj = None
+
+    hashed_name = hash_cli_name(name)
+    for filename in _listdir(CACHE_DIR):
+        path = _join(CACHE_DIR, filename)
+        cached_name, expiry = filename.rsplit('_', 1)
+
+        # Remove expired cached files
+        if int(expiry) < timestamp:
+            try:
+                _remove(path)
+            except OSError:
+                # May be already removed by another accelpy instance
+                pass
+            continue
+
+        # Get cached value
+        if cached_name == hashed_name:
+            cached_obj = json_read(path)
+
+            # Does not return immediately to ensure cleaning all expired
+            # cached objects
+
+    return cached_obj
+
+
+def set_cli_cache(name, obj, expiry_timestamp=None, expiry_seconds=30):
+    """
+    Get an object from disk cache.
+
+    Args:
+        name (str): Cache name.
+        obj (dict or list): Object to cache.
+        expiry_timestamp (int): Expiry timestamp.
+        expiry_seconds (int): Number of seconds before expiration.
+    """
+    if not is_cli():
+        return
+
+    if expiry_timestamp is None:
+        expiry_timestamp = int(_time()) + expiry_seconds
+
+    path = _join(CACHE_DIR, f"{hash_cli_name(name)}_{int(expiry_timestamp)}")
+    json_write(obj, path)
+    _chmod(path, 0o600)
 
 
 class _Request:
@@ -384,10 +471,25 @@ class _Request:
                 retried = True
                 continue
 
-            elif response.status_code != 200:
-                raise _ConfigurationException(response.text)
+            elif response.status_code >= 300:
+                raise _ConfigurationException(self._get_error_message(response))
 
             return response.json()
+
+    def _get_error_message(self, response):
+        """
+        Return error message from response.
+
+        Args:
+            response (requests.Response): Response.
+
+        Returns:
+            str: Error message.
+        """
+        try:
+            return response.json()["error"]
+        except (KeyError, _JSONDecodeError):
+            return response.text
 
     def _get_token(self):
         """
@@ -401,30 +503,41 @@ class _Request:
                 User credential are not valid.
         """
         # Check if token expired
-        if self._token_expire and self._token_expire > _time():
+        if self._token_expire and self._token_expire < _time():
             self._token = None
 
         # Get token
         if self._token is None:
-
             credentials = json_read(get_accelize_cred())
             client_id = credentials['client_id']
             client_secret = credentials['client_secret']
 
-            response = self._get_session().post(
-                f'{ACCELIZE_ENDPOINT}/o/token/',
-                data={"grant_type": "client_credentials"},
-                auth=(client_id, client_secret),
-                timeout=self._TIMEOUT)
+            # Try to get from cache
+            try:
+                self._token, self._token_expire = get_cli_cache(client_id)
 
-            if response.status_code != 200:
-                raise _AuthenticationException(
-                    f'Unable to authenticate client ID starting by '
-                    f'"{client_id[:10]}":\n{response.text}')
+            # Try to get from web service
+            except TypeError:
+                response = self._get_session().post(
+                    f'{ACCELIZE_ENDPOINT}/o/token/',
+                    data={"grant_type": "client_credentials"},
+                    auth=(client_id, client_secret),
+                    timeout=self._TIMEOUT)
 
-            access = response.json()
-            self._token = access['access_token']
-            self._token_expire = _time() + access['expires_in'] - 1
+                if response.status_code >= 300:
+                    raise _AuthenticationException(
+                        'Unable to authenticate client ID starting by '
+                        f'"{client_id[:10]}": '
+                        f'{self._get_error_message(response)}')
+
+                access = response.json()
+                self._token = access['access_token']
+                self._token_expire = int(_time()) + access['expires_in'] - 1
+
+                # Cache token value for use in cli
+                set_cli_cache(
+                    client_id, [self._token, self._token_expire],
+                    self._token_expire)
 
         return self._token
 

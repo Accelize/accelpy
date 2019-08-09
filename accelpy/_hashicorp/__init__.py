@@ -1,12 +1,11 @@
 # coding=utf-8
 """HashiCorp utilities common functions"""
 from os import chmod, stat, makedirs, fsdecode, scandir
-from os.path import join, isfile, dirname, getmtime
-from time import time
+from os.path import join, isfile, dirname
 
 from accelpy._common import (
-    HOME_DIR, call, get_sources_dirs, get_sources_filters, json_read,
-    json_write)
+    HOME_DIR, call, get_sources_dirs, get_sources_filters, get_cli_cache,
+    set_cli_cache)
 from accelpy.exceptions import RuntimeException
 
 
@@ -143,10 +142,10 @@ class Utility:
         Returns:
             dict: Last version information.
         """
-        info_cache = join(cls._install_dir(), 'info.json')
+        last_release = get_cli_cache(cls._name())
 
         # Get Last version information from HashiCorp checkpoint API
-        if not isfile(info_cache) or getmtime(info_cache) < time() - 3600.0:
+        if not last_release:
 
             # Lazy import: Only used on update
             from platform import machine, system
@@ -176,12 +175,7 @@ class Utility:
             last_release['signature_url'] = f"{checksum_url}.sig"
 
             # Cache result
-            makedirs(cls._install_dir(), exist_ok=True)
-            json_write(last_release, info_cache)
-
-        else:
-            # Get cached version
-            last_release = json_read(info_cache)
+            set_cli_cache(cls._name(), last_release, expiry_seconds=3600)
 
         return last_release
 

@@ -207,18 +207,103 @@ def _action_push(args):
     Application(args.file).push()
 
 
-def _application_completer(prefix, parsed_args, **_):
+def _completer_warn(message):
+    """
+    Show warning when autocompleting.
+
+    Args:
+        message (str): message
+    """
+    from argcomplete import warn
+    from accelpy._common import warn as warn_color
+    warn(warn_color(message))
+
+
+def _yaml_completer(prefix, parsed_args, **__):
+    """
+    Autocomplete YAML and directories paths.
+
+    Args:
+        prefix (str): Application prefix to filter.
+        parsed_args (argparse.Namespace): CLI arguments.
+
+    Yields:
+        str: path
+    """
+    from os import listdir
+    from os.path import join, isdir, splitext
+
+    try:
+        prefix, file_prefix = prefix.rsplit('/', 1)
+    except ValueError:
+        file_prefix = prefix
+        prefix = '.'
+
+    if isdir(prefix):
+        for name in listdir(prefix):
+            if not name.startswith(file_prefix):
+                continue
+
+            path = join(prefix, name) if prefix != '.' else name
+
+            if isdir(path):
+                yield path + '/'
+            elif splitext(name)[1].lower() in ('.yml', '.yaml'):
+                yield path
+
+
+def _application_completer(prefix, parsed_args, **__):
     """
     Autocomplete "accelpy init --application"
 
     Args:
-        prefix (str):
-        parsed_args (argparse.Namespace):
+        prefix (str): Application prefix to filter.
+        parsed_args (argparse.Namespace): CLI arguments.
 
     Returns:
         list of str: applications
     """
-    return []
+    # First get local application definitions files
+    yaml_applications = _yaml_completer(prefix, parsed_args)
+
+    # If not 100% sure the application is a local file, get applications from
+    # the web service, but avoid to call it every time for performance reason.
+    # - "." may be found in paths likes "./" or as file extension delimiter, it
+    #   cannot be found in the product_id, but may be found in the version
+    #   (In this case, the delimiter ":" is also present).
+    # - Product ID is in format "vendor/library/name" should not contain more
+    #   than 2 "/"
+    if ("." not in prefix or ':' in prefix) and prefix.count('/') <= 2:
+        from itertools import chain
+        from accelpy._application import Application
+        from accelpy.exceptions import (
+            AuthenticationException, AccelizeException)
+
+        try:
+            # "product_id:version" formatted
+            if ':' in prefix:
+                # TODO: Enable result caching
+                product_id, prefix = prefix.split(':', 1)
+
+                return chain(yaml_applications, (
+                    f"{product_id}:{version}" for version in
+                    Application.list_versions(product_id, prefix)))
+
+            # "product_id" formatted
+            else:
+                # TODO: Enable result caching
+                return chain(yaml_applications, Application.list(prefix))
+
+        except AuthenticationException as exception:
+            _completer_warn(
+                '"--application"/"-a" argument autocompletion require '
+                f'Accelize authentication: {exception}')
+
+        except AccelizeException:
+            # Skip silently any other Accelize web service error.
+            pass
+
+    return yaml_applications
 
 
 def _provider_completer(prefix, parsed_args, **_):
@@ -226,13 +311,34 @@ def _provider_completer(prefix, parsed_args, **_):
     Autocomplete "accelpy init --provider"
 
     Args:
-        prefix (str):
-        parsed_args (argparse.Namespace):
+        prefix (str): Provider prefix to filter.
+        parsed_args (argparse.Namespace): CLI arguments.
 
     Returns:
         list of str: providers
     """
-    return []
+    application = parsed_args.application
+    if application is None:
+        _completer_warn('Set "--application"/"-a" argument first to allow '
+                        '"--provider"/"-p" argument autocompletion.')
+        return
+
+    # First try to get providers from cache
+    from os.path import isfile, abspath
+    from accelpy._common import get_cli_cache, set_cli_cache
+
+    application = abspath(application) if isfile(application) else application
+    cached = f'{application}_providers'
+    providers = get_cli_cache(cached)
+
+    # Else get providers from application and cache them
+    if not providers:
+        from accelpy._application import Application
+        providers = Application(application).environments
+        set_cli_cache(cached, list(providers))
+
+    # Filter with prefix
+    return (provider for provider in providers if provider.startswith(prefix))
 
 
 def _run_command():
@@ -246,25 +352,23 @@ def _run_command():
 
     # Mark as CLI before import accelpy
     environ['ACCELPY_CLI'] = 'True'
-    from accelpy import __version__
+    from accelpy import __version__ as accelpy_version
     from accelpy._host import _iter_hosts_names
     from accelpy._common import warn
-
-    # Common strings
-    name_help = 'Configuration name to use.'
-    desc = f'Accelpy {__version__}.'
 
     # List existing hosts and eventually generate "init" warning
     names = tuple(_iter_hosts_names())
     names_completer = ChoicesCompleter(names)
 
     if not names and not environ.get('ACCELPY_GENERATE_CLI_DOC'):
-        require_init = warn('No configuration found, run "accelpy init" first.')
-        name_help = ' '.join((name_help, require_init))
-        desc = ' '.join((desc, require_init))
+        epilog = warn('No host configuration found, run "accelpy init" first.')
+    else:
+        epilog = None
 
     # Parser: "accelpy"
-    parser = ArgumentParser(prog='accelpy', description=desc)
+    parser = ArgumentParser(
+        prog='accelpy', description=f'Accelpy {accelpy_version}.',
+        epilog=epilog)
     sub_parsers = parser.add_subparsers(
         dest='action', title='Commands',
         help='accelpy commands', description=
@@ -292,17 +396,18 @@ def _run_command():
         help='Extra user configuration directory. Always also use the '
              '"~./accelize" directory.')
 
+    name_help = 'Configuration name to use.'
     # Parser: "accelpy plan"
     description = 'Plan the host infrastructure creation and show details.'
     action = sub_parsers.add_parser('plan', help=description,
-                                    description=description)
+                                    description=description, epilog=epilog)
     action.add_argument(
         '--name', '-n', help=name_help).completer = names_completer
 
     # Parser: "accelpy apply"
     description = 'Create the host infrastructure.'
     action = sub_parsers.add_parser(
-        'apply', help=description, description=description)
+        'apply', help=description, description=description, epilog=epilog)
     action.add_argument(
         '--name', '-n', help=name_help).completer = names_completer
     action.add_argument(
@@ -312,7 +417,7 @@ def _run_command():
     # Parser: "accelpy build"
     description = 'Create a virtual machine image of the configured host.'
     action = sub_parsers.add_parser(
-        'build', help=description, description=description)
+        'build', help=description, description=description, epilog=epilog)
     action.add_argument(
         '--name', '-n', help=name_help).completer = names_completer
     action.add_argument(
@@ -327,7 +432,7 @@ def _run_command():
     # Parser: "accelpy destroy"
     description = 'Destroy the host infrastructure.'
     action = sub_parsers.add_parser(
-        'destroy', help=description, description=description)
+        'destroy', help=description, description=description, epilog=epilog)
     action.add_argument(
         '--name', '-n', help=name_help).completer = names_completer
     action.add_argument(
@@ -340,28 +445,29 @@ def _run_command():
     # Parser: "accelpy ssh_private_key"
     description = 'Print the host SSH private key path.'
     action = sub_parsers.add_parser(
-        'ssh_private_key', help=description, description=description)
+        'ssh_private_key', help=description, description=description,
+        epilog=epilog)
     action.add_argument(
         '--name', '-n', help=name_help).completer = names_completer
 
     # Parser: "accelpy ssh_user"
     description = 'Print the name of the user to use to connect with SSH'
     action = sub_parsers.add_parser(
-        'ssh_user', help=description, description=description)
+        'ssh_user', help=description, description=description, epilog=epilog)
     action.add_argument(
         '--name', '-n', help=name_help).completer = names_completer
 
     # Parser: "accelpy private_ip"
     description = 'Print the private IP address.'
     action = sub_parsers.add_parser(
-        'private_ip', help=description, description=description)
+        'private_ip', help=description, description=description, epilog=epilog)
     action.add_argument(
         '--name', '-n', help=name_help).completer = names_completer
 
     # Parser: "accelpy public_ip"
     description = 'Print the public IP address.'
     action = sub_parsers.add_parser(
-        'public_ip', help=description, description=description)
+        'public_ip', help=description, description=description, epilog=epilog)
     action.add_argument(
         '--name', '-n', help=name_help).completer = names_completer
 
@@ -374,13 +480,15 @@ def _run_command():
     description = 'lint an application definition file.'
     action = sub_parsers.add_parser(
         'lint', help=description, description=description)
-    action.add_argument('file', help='Path to file to lint.')
+    action.add_argument(
+        'file', help='Path to YAML file to lint.').completer = _yaml_completer
 
     # Parser: "accelpy push"
     description = 'Push an application definition file to Accelize web service.'
     action = sub_parsers.add_parser(
         'push', help=description, description=description)
-    action.add_argument('file', help='Path to file to push.')
+    action.add_argument(
+        'file', help='Path to YAML file to push.').completer = _yaml_completer
 
     # Enable autocompletion
     autocomplete(parser)

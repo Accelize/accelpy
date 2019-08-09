@@ -117,6 +117,10 @@ def test_command_line_interface(tmpdir):
         result = cli('apply', '-n', name, '-q')
         assert not result.returncode
 
+        # Test: apply not quiet
+        result = cli('apply', '-n', name)
+        assert not result.returncode
+
         # Test: build
         result = cli('build', '-n', name, '-q')
         assert not result.returncode
@@ -152,6 +156,9 @@ def test_command_line_interface(tmpdir):
         assert not result.returncode
         assert name in result.stdout
 
+        # Test: push
+        # TODO: once server ready
+
         # Test: destroy
         result = cli('destroy', '-n', name, '-d', '-q')
         assert not result.returncode
@@ -177,3 +184,98 @@ def test_command_line_interface(tmpdir):
             config_dir.join(name).remove(rec=1, ignore_errors=True)
         if latest.isfile():
             latest.remove(ignore_errors=True)
+
+
+def test_command_line_autocomplete(tmpdir):
+    """
+    Tests the command line autocompletion.
+
+    Args:
+        tmpdir (py.path.local) tmpdir pytest fixture
+    """
+    from argparse import Namespace
+    from os import environ, chdir, getcwd
+    from os.path import relpath, isdir, join, dirname
+    import accelpy._common as common
+    from accelpy.__main__ import (
+        _completer_warn, _application_completer, _provider_completer,
+        _yaml_completer)
+
+    # Mock cache
+    cwd = getcwd()
+    environ['ACCELPY_CLI'] = 'True'
+    common_cache_dir = common.CACHE_DIR
+    common.CACHE_DIR = str(tmpdir.join('cache').ensure(dir=True))
+
+    # Tests
+    try:
+
+        # Should not raises
+        _completer_warn('Warning message')
+
+        # Test yaml completer with absolute paths
+        matching = []
+        not_matching = []
+        yaml_dir = tmpdir.join('yaml')
+        sub_yaml_dir = yaml_dir.join('matching_dir').ensure(dir=True)
+        matching.append(sub_yaml_dir)
+        matching.append(yaml_dir.join('matching.yml').ensure())
+        matching.append(yaml_dir.join('matching.yaml').ensure())
+        not_matching.append(yaml_dir.join('not_matching.yml').ensure())
+        not_matching.append(yaml_dir.join('matching.not_yml').ensure())
+
+        matching = [str(path) for path in matching]
+        matching = [path + '/' if isdir(path) else path for path in matching]
+        not_matching = [str(path) for path in not_matching]
+
+        prefix = str(yaml_dir.join('matching'))
+        result = list(_yaml_completer(prefix, Namespace()))
+
+        for path in matching:
+            assert path in result, path
+        for path in not_matching:
+            assert path not in result, path
+
+        # Test yaml completer with relative path
+        chdir(str(yaml_dir))
+
+        matching = [relpath(path) for path in matching]
+        matching = [path + '/' if isdir(path) else path for path in matching]
+        not_matching = [relpath(path) for path in not_matching]
+
+        prefix = 'matching'
+        result = list(_yaml_completer(prefix, Namespace()))
+
+        for path in matching:
+            assert path in result, path
+        for path in not_matching:
+            assert path not in result, path
+
+        # Test yaml completer with bad path
+        assert not list(_yaml_completer(
+            str(yaml_dir.join('not_exits/not_exists')), Namespace()))
+
+        # Test Application completer
+        # TODO: once server ready
+
+        # Test Provider completer, not application
+        assert not _provider_completer('', Namespace(application=None))
+
+        # test Provider completer from definition
+        excepted = ["aws,eu-west-1,f1"]
+        app_yaml = join(dirname(__file__), 'test_app_container_service.yml')
+        assert list(_provider_completer(
+            '', Namespace(application=app_yaml))) == excepted
+
+        assert not list(_provider_completer(
+            'no_exists', Namespace(application=app_yaml)))
+
+        # test Provider completer from cache
+        assert list(_provider_completer(
+            '', Namespace(application=app_yaml))) == excepted
+
+    # Clean up
+    finally:
+        common.CACHE_DIR = common_cache_dir
+        chdir(cwd)
+        del environ['ACCELPY_CLI']

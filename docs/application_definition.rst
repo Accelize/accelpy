@@ -28,7 +28,8 @@ This section is a mapping of following key, values pairs:
 * `product_id` (string): **Required**. Product ID linked to the application.
   The product ID can be found with the related product in your Accelize vendor
   account on `Accelize portal <https://portal.accelize.com/>`_.
-* `version` (string): **Required**. Version of the application.
+* `version` (string): **Required**. Version of the application in
+  `semantic versioning format <https://semver.org>`_.
 * `type` (string): **Required**. Application type. The application type is used
   to filter configuration and use correct Ansible roles to deploy the
   application. For more information on each application type, see the

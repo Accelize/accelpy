@@ -44,9 +44,17 @@ def test_terraform(tmpdir):
     Args:
         tmpdir (py.path.local) tmpdir pytest fixture
     """
-    from accelpy._terraform import Terraform
+    from os.path import dirname
+    from accelpy._terraform import Terraform, __file__ as terraform_path
     from accelpy.exceptions import RuntimeException
 
+    # Ensure Terraform files are properly formatted and syntax errors free
+    fmt = Terraform(dirname(terraform_path))._exec('fmt', check=False)
+    if fmt.returncode:
+        print(fmt.stderr)
+        pytest.fail(pytrace=False)
+
+    # Mock config directories
     config_dir = tmpdir.join('config').ensure(dir=True)
     source_dir = tmpdir.join('source').ensure(dir=True)
     generated_ssh_key = config_dir.join('ssh_private.pem')

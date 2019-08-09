@@ -22,8 +22,6 @@ package:
 
 accelize_drm:
   conf:
-    design:
-      boardType: accelpy_testing
     licensing:
       url: https://master.metering.accelize.com
     drm:

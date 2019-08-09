@@ -13,7 +13,8 @@ def test_host(tmpdir):
     import accelpy._common as common
     import accelpy._host as accelpy_host
     from accelpy._host import Host, iter_hosts
-    from accelpy.exceptions import ConfigurationException
+    from accelpy.exceptions import (
+        ConfigurationException, AccelizeException, AuthenticationException)
     from accelpy._application import Application
 
     from tests.test_core_terraform import mock_terraform_provider
@@ -122,7 +123,7 @@ def test_host(tmpdir):
         assert not config_dir.join(host.name).exists()
 
         # Test: Clean up in case of initialization error
-        with pytest.raises(ConfigurationException):
+        with pytest.raises(AccelizeException):
             Host(application='path_not_exists', user_config=source_dir,
                  name='should_be_cleaned')
         assert not config_dir.join('should_be_cleaned').exists()
@@ -173,7 +174,7 @@ def test_host(tmpdir):
         # Test: Missing Accelize DRM credentials
         source_dir.join('cred.json').remove()
         application = mock_application(source_dir)
-        with pytest.raises(ConfigurationException):
+        with pytest.raises(AuthenticationException):
             Host(application=application, user_config=source_dir,
                  keep_config=False)
 

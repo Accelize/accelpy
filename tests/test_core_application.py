@@ -339,3 +339,19 @@ fpga:
 """)
     with pytest.raises(ConfigurationException):
         Application(yml_file)
+
+    # Test: Value does not match regex
+    yml_file.write("""
+application:
+  product_id: my_product_id
+  version: 1.0.0.0.0
+
+package:
+  type: container_image
+  name: my_container_image
+
+fpga:
+  image: image
+""")
+    with pytest.raises(ConfigurationException):
+        Application(yml_file)

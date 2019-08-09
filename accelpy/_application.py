@@ -1,6 +1,7 @@
 # coding=utf-8
 """Application Definition"""
 from os import fsdecode
+from re import fullmatch
 
 from accelpy._common import request
 from accelpy._yaml import yaml_read, yaml_write
@@ -11,99 +12,71 @@ FORMAT = {
     'application': {
         '_node': dict,
         'product_id': dict(
-            required=True,
-            desc='Product ID linked to the application'),
+            required=True),
         'version': dict(
             required=True,
-            desc='Application version'),
+            regex_help='The version must be in semantic versioning format',
+            regex=r'^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)'
+                  r'(-(0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)'
+                  r'(\.(0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*)?'
+                  r'(\+[0-9a-zA-Z-]+(\.[0-9a-zA-Z-]+)*)?$'),
         'type': dict(
             required=True,
-            desc='Application type.',
             values=('container_service', 'kubernetes_node'),
             default='container_service'),
         'variables': dict(
-            desc='Application variables. See application type documentation to '
-                 'see available variables.',
             value_type=dict,
-            default={},
-        )
+            default={})
     },
     'package': {
         '_node': dict,
         'type': dict(
             default='container_image',
-            values=('container_image', 'vm_image', 'kubernetes_deployment'),
-            desc='Type of package.'),
+            values=('container_image', 'vm_image', 'kubernetes_deployment')),
         'name': dict(
-            required=True,
-            desc='Package name or ID'),
-        'version': dict(
-            desc='Package version. Latest available if not specified'),
-        'repository': dict(
-            desc='Package repository. Only required if using a non standard '
-                 'repository'),
+            required=True,),
+        'version': dict(),
+        'repository': dict(),
     },
     'firewall_rules': {
         '_node': list,
         'start_port': dict(
             required=True,
-            value_type=int,
-            desc='Start of port range to allow.'),
+            value_type=int),
         'end_port': dict(
             required=True,
-            value_type=int,
-            desc='End of port range to allow.'),
+            value_type=int),
         'protocol': dict(
             values=('tcp', 'udp', 'all'),
-            default='tcp',
-            desc='Protocol to allow.'),
+            default='tcp'),
         'direction': dict(
             values=('ingress', 'egress'),
-            default='ingress',
-            desc='Direction to allow.'),
+            default='ingress'),
     },
     'fpga': {
         '_node': dict,
         'image': dict(
             required=True,
-            value_type=(list, str),
-            desc='FPGA bitstream image to use. Should be a single string or a '
-                 'list of strings with same number of elements as FPGA count.'
-        ),
+            value_type=(list, str)),
         'driver': dict(
-            desc='FPGA driver to use, default to Linux kernel driver.',
             values=('aws_f1', 'xilinx_xrt')),
-        'driver_version': dict(
-            desc='FPGA driver version to use. If not specified, '
-                 'use latest available.'
-        ),
+        'driver_version': dict(),
         'count': dict(
             default=1,
-            value_type=int,
-            desc='Number of FPGA devices required to run the application.'
-        )
+            value_type=int)
     },
     'accelize_drm': {
         '_node': dict,
         'use_service': dict(
             value_type=bool,
-            default=True,
-            desc='Use the Accelize DRM service to handle Accelize DRM. If not '
-                 'enabled, the application must handle the DRM itself using '
-                 'the Accelize DRM library.'
-        ),
+            default=True),
         'conf': dict(
-            desc='Accelize DRM configuration.',
             value_type=dict,
-            default={},
-        ),
+            default={}),
     },
     'test': {
         '_node': dict,
-        'shell': dict(
-            desc='Shell command used to test application that should return a 0'
-                 ' code in cas of success.'
-        )
+        'shell': dict()
     }
 }
 
@@ -160,28 +133,34 @@ class Application:
         return cls(response)
 
     @staticmethod
-    def list():
-        """
-        List available applications on Accelize web service.
-
-        Returns:
-            list of str: products.
-        """
-        return request.query('/auth/listapplicationdefinitions/')
-
-    @staticmethod
-    def list_versions(product_id):
+    def list(prefix=''):
         """
         List available applications on Accelize web service.
 
         Args:
             product_id (str): Product ID linked to the application.
+            prefix (str): Product ID prefix to filter.
+
+        Returns:
+            list of str: products.
+        """
+        return request.query('/auth/listapplicationdefinitions/',
+                             dict(prefix=prefix))
+
+    @staticmethod
+    def list_versions(product_id, prefix=''):
+        """
+        List available applications on Accelize web service.
+
+        Args:
+            product_id (str): Product ID linked to the application.
+            prefix (str): Version prefix to filter.
 
         Returns:
             list of str: versions.
         """
         return request.query('/auth/listapplicationdefinitionversions/',
-                             dict(product_id=product_id))
+                             dict(product_id=product_id, prefix=prefix))
 
     def push(self):
         """
@@ -357,15 +336,7 @@ class Application:
         Raises:
             accelpy.exceptions.ConfigException: Error in value.
         """
-        valid_values = key_format.get('values')
-        if valid_values and not (
-                value in valid_values or value == key_format.get('default')):
-            raise ConfigurationException(
-                f'Invalid value "{value}" for "{key}" key in "{section_name}" '
-                f'section (possibles values are '
-                f'{", ".join(str(valid_value) for valid_value in valid_values)}'
-                ').')
-
+        # Check list of values
         value_type = key_format.get('value_type', str)
         if isinstance(value_type, tuple) and value_type[0] == list:
             # Checks value content type
@@ -380,16 +351,36 @@ class Application:
             elif isinstance(value, value_type[1]):
                 return [value]
 
-            # Bad value
+            # Bad value in list
             elif value is not None:
                 raise ConfigurationException(
                     f'The "{key}" key in "{section_name}" section must be a '
                     f'list of "{value_type[1].__name__}".')
 
+        # Check single value type
         elif value is not None and not isinstance(value, value_type):
             raise ConfigurationException(
                 f'The "{key}" key in "{section_name}" section must be a '
                 f'"{value_type.__name__}".')
+
+        valid_values = key_format.get('values')
+        valid_regex = key_format.get('regex')
+
+        # Check single value in allowed values
+        if valid_values and not (
+                value in valid_values or value == key_format.get('default')):
+            raise ConfigurationException(
+                f'Invalid value "{value}" for "{key}" key in "{section_name}" '
+                f'section (possibles values are '
+                f'{", ".join(str(valid_value) for valid_value in valid_values)}'
+                ').')
+
+        # Check single value match regex
+        elif valid_regex and value and not fullmatch(valid_regex, value):
+            raise ConfigurationException(
+                f'Invalid value "{value}" for "{key}" key in "{section_name}" '
+                f'section '
+                f'({key_format.get("regex_help", "See documentation")}).')
 
         return value
 
