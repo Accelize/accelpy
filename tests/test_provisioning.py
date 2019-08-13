@@ -13,7 +13,7 @@ def get_name(app):
         str: name
     """
     from uuid import uuid4 as uuid
-    return (f'accelpy_{app.get("application", "name")}'
+    return (f'accelpy_{app["application"]["product_id"]}'
             f'_{str(uuid()).replace("-", "")[:8]}')
 
 
@@ -73,7 +73,7 @@ def test_application(application_yml, tmpdir):
             host.apply()
 
             # Get test command
-            command = app.get('test', 'shell', env=provider)
+            command = app[provider]['test']['shell']
             if not command:
                 pytest.xfail('No test defined')
 
@@ -137,7 +137,7 @@ def test_host_mocked(tmpdir):
 
     # Mock an existing host with a virtual machine
     mocked_app = Application(mocked_app_path)
-    mocked_provider = mocked_app.environments.pop()
+    mocked_provider = mocked_app.providers.pop()
     mocked_host = Host(name=get_name(mocked_app), application=mocked_app_path,
                        provider=mocked_provider)
 

@@ -55,13 +55,13 @@ Example:
 
 This section define how the application is packaged and how to install it.
 
-This section is a mapping of following key, values pairs:
+This section is a list of mappings with following key values pairs:
 
 * `type` (string): **Required**. Package type. Each application type support a
      limited subset of package types. Predefined package types are:
 
     * `container_image`: A Docker or OCI container image.
-    * `kubernetes_deployment`: URL to a Kubernetes deployment or pod
+    * `kubernetes_yaml`: URL to a Kubernetes deployment, pod, service, ...
       YAML or JSON file.
     * `vm_image`: A virtual machine image. Can be an ID, or an URL
       depending the provider in use. Using a virtual machine image disable the
@@ -79,10 +79,29 @@ This section is a mapping of following key, values pairs:
 Example:
 
 .. code-block:: yaml
+   :caption: Single package
 
+    package:
+      - type: container_image
+        name: httpd
+
+    # Can also be written as mapping:
     package:
       type: container_image
       name: httpd
+
+.. code-block:: yaml
+   :caption: Multiple packages
+
+    package:
+      - type: kubernetes_yaml
+        name: url_to_my_deployment
+      - type: kubernetes_yaml
+        name: url_to_my_service
+
+.. note:: Even if this section is a list, not all applications type support to
+          provide more that one package in the list. See application types
+          documentation for more information.
 
 `firewall_rules` section
 ~~~~~~~~~~~~~~~~~~~~~~~~

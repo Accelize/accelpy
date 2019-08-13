@@ -29,10 +29,10 @@ FORMAT = {
             default={})
     },
     'package': {
-        '_node': dict,
+        '_node': list,
         'type': dict(
             default='container_image',
-            values=('container_image', 'vm_image', 'kubernetes_deployment')),
+            values=('container_image', 'vm_image', 'kubernetes_yaml')),
         'name': dict(
             required=True,),
         'version': dict(),
@@ -92,7 +92,7 @@ class Application:
     """
 
     def __init__(self, definition):
-        self._environments = set()
+        self._providers = set()
 
         # Load from dict
         if isinstance(definition, dict):
@@ -103,10 +103,20 @@ class Application:
             self._path = fsdecode(definition)
             definition = yaml_read(self._path)
 
+        # Validate content
         self._definition = self._validate(definition)
 
+        # Cache definition for each provider
+        self._provider_definition = self._create_provider_definitions()
+
     def __getitem__(self, key):
-        return self._definition.__getitem__(key)
+        # Get global definition
+        if key in FORMAT:
+            return self._definition[key]
+
+        # Get provider cached definition, or default definition
+        return self._provider_definition.get(
+            key, self._provider_definition[None])
 
     @classmethod
     def from_id(cls, application):
@@ -170,34 +180,67 @@ class Application:
                              self._definition, 'post')
 
     @property
-    def environments(self):
+    def providers(self):
         """
-        Environments specified in definition.
+        Providers specified in definition.
 
         Returns:
-            set of str: Environments
+            set of str: Providers
         """
-        return self._environments
+        return self._providers
 
-    def get(self, section, key, env=None):
+    def _create_provider_definitions(self):
         """
-        Return value from definition.
+        Create cached definition for each provider + a default unspecified
+        provider.
+
+        Returns:
+            dict: Definition
+        """
+        result = dict()
+        for provider in list(self._providers) + [None]:
+            result[provider] = provider_definition = dict()
+
+            for section in self._definition:
+                node = self._definition[section]
+
+                if isinstance(node, dict):
+                    provider_definition[section] = self._get_provider_node(
+                        node, provider)
+                else:
+                    provider_definition[section] = [
+                        self._get_provider_node(node[i], provider)
+                        for i in range(len(node))]
+
+        return result
+
+    def _get_provider_node(self, node, provider):
+        """
+        Get node for a specific provider.
 
         Args:
-            section (str): Definition section.
-            key (str): Definition key.
-            env (str): Environment. None for use default environment value.
+            node (dict): Node.
+            provider (str or None): provider.
 
         Returns:
-            Value
+            dict: Node
         """
-        # Return specific environment value
-        try:
-            return self._definition[section][env][key]
+        result_node = node.copy()
 
-        # Return default environment value
+        # Update node with provider specific values
+        try:
+            result_node.update(node[provider])
         except KeyError:
-            return self._definition[section][key]
+            pass
+
+        # Clean up other Providers
+        for key in self._providers:
+            try:
+                del result_node[key]
+            except KeyError:
+                pass
+
+        return result_node
 
     def save(self, path=None):
         """
@@ -232,7 +275,7 @@ class Application:
                 # Create missing definition section
                 section = definition[section_name] = node_type()
 
-            self._validate_section(
+            definition[section_name] = self._validate_section(
                 node_type, section, section_name, section_format)
 
         # Check for unknown sections
@@ -256,17 +299,29 @@ class Application:
 
         Raises:
             ValueError: Error in section format.
+
+        Returns:
+            dict or list: section.
         """
         if not isinstance(section, node_type):
+            if node_type == dict:
+                raise ConfigurationException(
+                    f'The section "{section_name}" must be a "mapping".')
+            else:
+                section = [section]
+
+        if section_name == 'package' and not section:
             raise ConfigurationException(
-                f'The section "{section_name}" must be a '
-                f'{"mapping" if node_type == dict else "list"}.')
+                f'The section "{section_name}" must contain a least one '
+                f'"mapping".')
 
         for node in (section if isinstance(section, list) else (section,)):
             args = (node, section_format, section_name)
             self._validate_node(*args)
-            if not self._validate_env_node(*args):
+            if not self._validate_provider_node(*args):
                 self._check_required(*args)
+
+        return section
 
     @staticmethod
     def _validate_node(node, node_format, section_name):
@@ -299,7 +354,7 @@ class Application:
     @staticmethod
     def _check_required(node, node_format, section_name):
         """
-        Check for required value in default env.
+        Check for required value in default provider.
 
         Args:
             node (dict): Node to validate
@@ -314,7 +369,7 @@ class Application:
             if key == '_node':
                 continue
 
-            # Check required value for default environment
+            # Check required value for default provider
             if node_format[key].get('required', False) and node[key] is None:
                 raise ConfigurationException(
                     f'The "{key}" key in "{section_name}" section is required.')
@@ -384,9 +439,9 @@ class Application:
 
         return value
 
-    def _validate_env_node(self, node, node_format, section_name):
+    def _validate_provider_node(self, node, node_format, section_name):
         """
-        Validate an environment override node.
+        Validate an provider override node.
 
         Args:
             node (dict): Node to validate
@@ -397,50 +452,56 @@ class Application:
             ValueError: Error in node format.
 
         Returns:
-            bool: True in at least one env found.
+            bool: True in at least one provider found.
         """
-        env_found = False
-        for env in node:
+        provider_found = False
+        for provider in node:
 
-            # Not an env
-            if env in node_format:
+            # Not an provider
+            if provider in node_format:
                 continue
 
-            # Env found
-            self._environments.add(env)
-            env_found = True
-            env_node = node[env]
-
-            # Env that is not a dict is likely an unknown key
-            if not isinstance(env_node, dict) or env_node == '_node':
+            if provider in FORMAT:
                 raise ConfigurationException(
-                    f'Unknown "{env_node}" key in "{section_name}" section.')
+                    f'Provider in "{section_name}" section cannot be named with'
+                    f' reserved name "{provider}".')
 
-            # Check environment integrity
+            # Provider found
+            self._providers.add(provider)
+            provider_found = True
+            provider_node = node[provider]
+
+            # Provider that is not a dict is likely an unknown key
+            if not isinstance(provider_node, dict) or provider_node == '_node':
+                raise ConfigurationException(
+                    f'Unknown "{provider_node}" key in '
+                    f'"{section_name}" section.')
+
+            # Check provider integrity
             for key in node_format:
 
                 if key == '_node':
                     continue
 
-                value = env_node.get(key, node.get(key))
+                value = provider_node.get(key, node.get(key))
                 key_format = node_format[key]
 
-                # Required value for environment
+                # Required value for provider
                 if key_format.get('required', False) and value is None:
                     raise ConfigurationException(
                         f'The "{key}" key in "{section_name}" section is '
-                        f'required for "{env}" environment.')
+                        f'required for "{provider}" provider.')
 
                 # Check value
-                if key in env_node:
-                    env_node[key] = Application._check_value(
+                if key in provider_node:
+                    provider_node[key] = Application._check_value(
                         key, key_format, value, section_name)
 
-            # Check for unknown keys in environment
-            for key in env_node:
+            # Check for unknown keys in provider
+            for key in provider_node:
                 if key not in node_format or key == '_node':
                     raise ConfigurationException(
                         f'Unknown "{key}" key in "{section_name}" section '
-                        f'for "{env}" environment.')
+                        f'for "{provider}" provider.')
 
-        return env_found
+        return provider_found

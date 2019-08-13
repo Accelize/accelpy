@@ -4,16 +4,30 @@ Kubernetes Node
 The application is one or more preconfigured Kubernetes Nodes with a master
 node.
 
-.. note:: Currently the application provision only the application as a single
-          node/master.
+The application type provision only the application as a single Kubernetes
+master/node that allow you to easily test your application with Kubernetes or
+as single node that can be integrated it in an existing Kubernetes
+infrastructure.
+
+Prerequisites
+-------------
+
+To use this application a minimum Kubernetes knowledge is required to create
+YAML files (pods, deployments services,...) that are required to deploy the
+application. See `Kubernetes documentation <https://kubernetes.io/docs/home/>`_
+for more information.
 
 Application definition
 ----------------------
 
 This application type support the following package types:
 
-* `kubernetes_deployment`: A Kubernetes pod or deployment.
+* `kubernetes_yaml`: A Kubernetes pod or deployment.
 * `vm_image`: An image of an already provisioned virtual machine.
+
+It is possible to provides as many `kubernetes_yaml` as needed, by example to
+create a *deployment* and then the *service* that will expose it.
+`kubernetes_yaml` are applied in provided order.
 
 Example snippet of application definition file:
 
@@ -25,17 +39,27 @@ Example snippet of application definition file:
      type: kubernetes_node
 
    package:
-     name: url_to_my_deployment_yaml
-     type: kubernetes_deployment
+     - name: url_to_my_deployment_yaml
+       type: kubernetes_yaml
+     - name: url_to_my_service_yaml
+       type: kubernetes_yaml
 
+Variables
+~~~~~~~~~
+
+This application support following variables:
+
+* `master_node`: If set to `true` (Default value), install the application as a
+  single master/node. If set to `false`, install the application as a single
+  node that must be integrated with an existing Kubernetes infrastructure.
 
 Container configuration
 -----------------------
 
 See :doc:`application_container_image` for common container requirements.
 
-Pod and Deployments configuration
----------------------------------
+Device plugin and pod/deployment configuration
+----------------------------------------------
 
 Kubernetes use
 `devices plugins <https://kubernetes.io/docs/concepts/extend-kubernetes/compute-storage-net/device-plugins/>`_
@@ -65,6 +89,23 @@ See relevant device plugins documentation for more information:
 
 * `Xilinx boards <https://github.com/Xilinx/FPGA_as_a_Service/tree/master/k8s-fpga-device-plugin/trunk>`_
 * `AWS F1 <https://github.com/Xilinx/FPGA_as_a_Service/tree/master/k8s-fpga-device-plugin/trunk/aws>`_
+
+Single node mode
+----------------
+
+In the master/node mode, the provided Kubernetes YAML configuration are applied
+and the application should be ready to use.
+
+In the single node mode, the node is provisioned with FPGA and Kubernetes node
+requirements but nothing is applied. You needs to join your node to your
+infrastructure  and apply your configuration on your master on the node.
+
+The single node mod is mainly intended to be used with `accelpy build` to create
+a virtual machine image that can be used as base to create FPGA nodes in an
+existing Kubernetes infrastructure.
+
+To work properly, the relevant device plugin (See bellow) must be applied as
+daemon set on the master of your infrastructure.
 
 Security notice
 ---------------

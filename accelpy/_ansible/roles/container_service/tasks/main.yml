@@ -51,8 +51,8 @@
 
 - name: Pull application container image using Docker
   docker_image:
-    name: "{{ package_name }}"
-    tag: "{{ package_version | default('latest') }}"
+    name: "{{ app_packages[0].name }}"
+    tag: "{{ app_packages[0].version | default('latest') }}"
     state: present
     source: pull
   register: docker_image_info
@@ -62,8 +62,9 @@
 
 - name: Pull application container image using Podman
   podman_image:
-    name: "{{ package_repository | default('docker.io') }}/{{ package_name }}"
-    tag: "{{ package_version | default('latest') }}"
+    name: "{{ app_packages[0].repository | default('docker.io') }}/
+           {{ app_packages[0].name }}"
+    tag: "{{ app_packages[0].version | default('latest') }}"
     state: present
   register: podman_image_info
   become_user: appuser

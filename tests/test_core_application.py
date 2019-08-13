@@ -23,10 +23,10 @@ def mock_application(source_dir, override=None):
             'product_id': 'my_product_id',
             'version': '1.0.0'
         },
-        'package': {
+        'package': [{
             'type': 'container_image',
             'name': 'my_image'
-        },
+        }],
         'fpga': {
             'image': 'image'
         },
@@ -64,14 +64,14 @@ application:
   version: 1.0.0
 
 package:
-  type: container_image
-  name: my_container_image
-  version: 1.0.0
+  - type: container_image
+    name: my_container_image
+    version: 1.0.0
 
-  # Override of value in environment
-  my_provider:
-    type: vm_image
-    name: my_vm_image
+    # Override of value in provider
+    my_provider:
+      type: vm_image
+      name: my_vm_image
 
 firewall_rules:
   - start_port: 1000
@@ -84,7 +84,7 @@ firewall_rules:
     direction: egress
 
 fpga:
-  # Mandatory value only in environment
+  # Mandatory value only in provider
   my_provider:
     image: my_fpga_image
 """)
@@ -98,18 +98,19 @@ fpga:
     assert isinstance(app['application'], dict)
 
     # Test: get
-    assert app.get('fpga', 'image') is None
-    assert app.get('fpga', 'image', 'my_provider') == ['my_fpga_image']
-    assert app.get('package', 'type') == 'container_image'
-    assert app.get('package', 'type', 'my_provider') == 'vm_image'
+    assert app['fpga']['image'] is None
+    assert app['my_provider']['fpga']['image'] == ['my_fpga_image']
+    assert app['package'][0]['type'] == 'container_image'
+    assert app['my_provider']['package'][0]['type'] == 'vm_image'
 
     # Test: save
-    app['package']['name'] = 'another_image'
+    app['package'][0]['my_provider']['name'] = 'another_image'
     app.save()
-    assert Application(yml_file)['package']['name'] == 'another_image'
+    assert Application(
+        yml_file)['my_provider']['package'][0]['name'] == 'another_image'
 
-    # Test: environment
-    assert app.environments == {'my_provider'}
+    # Test: provider
+    assert app.providers == {'my_provider'}
 
     # Test: Load valid file with missing not mandatory section
     yml_file.write("""
@@ -118,14 +119,73 @@ application:
   version: 1.0.0
 
 package:
-  type: container_image
-  name: my_container_image
+  - type: container_image
+    name: my_container_image
 
 fpga:
   image: image
 """)
     app = Application(yml_file)
     assert app['firewall_rules'] == []
+
+    # Test: Load file with inferred list section from mapping
+    yml_file.write("""
+    application:
+      product_id: my_product_id
+      version: 1.0.0
+
+    package:
+      type: container_image
+      name: my_container_image
+
+    fpga:
+      image: image
+    """)
+    app = Application(yml_file)
+    assert app['package'][0]['type'] == 'container_image'
+
+    # Test: Provider with reserved name
+    yml_file.write("""
+    application:
+      product_id: my_product_id
+      version: 1.0.0
+
+    package:
+      - type: container_image
+        name: my_container_image
+
+    fpga:
+      image: image
+      application:
+        image: image
+    """)
+    with pytest.raises(ConfigurationException):
+        Application(yml_file)
+
+    # Test: Missing or empty package section
+    yml_file.write("""
+    application:
+      product_id: my_product_id
+      version: 1.0.0
+
+    package: []
+
+    fpga:
+      image: image
+    """)
+    with pytest.raises(ConfigurationException):
+        Application(yml_file)
+
+    yml_file.write("""
+    application:
+      product_id: my_product_id
+      version: 1.0.0
+
+    fpga:
+      image: image
+    """)
+    with pytest.raises(ConfigurationException):
+        Application(yml_file)
 
     # Test: Load bad section type
     yml_file.write("""
@@ -134,8 +194,8 @@ application:
     version: 1.0.0
 
 package:
-  type: container_image
-  name: my_container_image
+  - type: container_image
+    name: my_container_image
 
 fpga:
   image: image
@@ -150,7 +210,7 @@ application:
 
 package:
   # Missing image
-  type: container_image
+  - type: container_image
 
 fpga:
   image: image
@@ -158,7 +218,7 @@ fpga:
     with pytest.raises(ConfigurationException):
         Application(yml_file)
 
-    # Test: Missing mandatory value in environment keys
+    # Test: Missing mandatory value in provider keys
     yml_file.write("""
 application:
   product_id: my_product_id
@@ -166,8 +226,8 @@ application:
 
 package:
   # Missing image
-  my_provider:
-    type: container_image
+  - my_provider:
+      type: container_image
 
 fpga:
   image: image
@@ -182,8 +242,8 @@ application:
   version: 1.0.0
 
 package:
-  type: container_image
-  name: my_container_image
+  - type: container_image
+    name: my_container_image
 
 firewall_rules:
   - start_port: 1000
@@ -205,8 +265,8 @@ application:
   version: 1.0.0
 
 package:
-  type: container_image
-  name: my_container_image
+  - type: container_image
+    name: my_container_image
 
 fpga:
   image: image
@@ -223,8 +283,8 @@ application:
   version: 1.0.0
 
 package:
-  type: container_image
-  name: my_container_image
+  - type: container_image
+    name: my_container_image
 
 fpga:
   image:
@@ -242,8 +302,8 @@ application:
   version: 1.0.0
 
 package:
-  type: container_image
-  name: my_container_image
+  - type: container_image
+    name: my_container_image
 
 fpga:
   image:
@@ -260,8 +320,8 @@ application:
   version: 1.0.0
 
 package:
-  type: container_image
-  name: my_container_image
+  - type: container_image
+    name: my_container_image
 
 fpga:
   image: image_slot0
@@ -276,8 +336,8 @@ application:
   version: 1.0.0
 
 package:
-  type: container_image
-  name: my_container_image
+  - type: container_image
+    name: my_container_image
 
 fpga:
   image: 1
@@ -293,8 +353,8 @@ application:
   version: 1.0.0
 
 package:
-  type: container_image
-  name: my_container_image
+  - type: container_image
+    name: my_container_image
 
 fpga:
   image: image
@@ -312,8 +372,8 @@ application:
   version: 1.0.0
 
 package:
-  type: container_image
-  name: my_container_image
+  - type: container_image
+    name: my_container_image
 
 fpga:
   image: image
@@ -322,15 +382,15 @@ fpga:
     with pytest.raises(ConfigurationException):
         Application(yml_file)
 
-    # Test: Extra key should raise in environment
+    # Test: Extra key should raise in provider
     yml_file.write("""
 application:
   product_id: my_product_id
   version: 1.0.0
 
 package:
-  type: container_image
-  name: my_container_image
+  - type: container_image
+    name: my_container_image
 
 fpga:
   image: image
@@ -347,8 +407,8 @@ application:
   version: 1.0.0.0.0
 
 package:
-  type: container_image
-  name: my_container_image
+  - type: container_image
+    name: my_container_image
 
 fpga:
   image: image

@@ -104,13 +104,15 @@ def call(command, check=True, pipe_stdout=False, retries=0, **run_kwargs):
     Returns:
         subprocess.CompletedProcess: Utility call result.
     """
+    kwargs = dict(universal_newlines=True, stderr=_PIPE)
+    kwargs.update(run_kwargs)
+
     if pipe_stdout:
-        run_kwargs.setdefault('stdout', _PIPE)
+        kwargs.setdefault('stdout', _PIPE)
 
     retried = 0
     while True:
-        result = _run(command, universal_newlines=True, stderr=_PIPE,
-                      **run_kwargs)
+        result = _run(command, **kwargs)
 
         if result.returncode and retried < retries:
             retried += 1

@@ -334,7 +334,7 @@ def _provider_completer(prefix, parsed_args, **_):
     # Else get providers from application and cache them
     if not providers:
         from accelpy._application import Application
-        providers = Application(application).environments
+        providers = Application(application).providers
         set_cli_cache(cached, list(providers))
 
     # Filter with prefix

@@ -149,19 +149,19 @@ def test_host(tmpdir):
             application_yaml = str(host_config_dir.join('application.yml'))
 
             # Test: Build image and with no application update
-            assert Application(application_yaml).get(
-                'package', 'name', env=provider) == 'my_image'
+            assert Application(
+                application_yaml)[provider]['package'][0]['name'] == 'my_image'
 
             host.build(quiet=True)
 
-            assert Application(application_yaml).get(
-                'package', 'name', env=provider) == 'my_image'
+            assert Application(
+                application_yaml)[provider]['package'][0]['name'] == 'my_image'
 
             # Test: Build image and update application
             host.build(quiet=True, update_application=True)
 
-            assert Application(application_yaml).get(
-                'package', 'name', env=provider) == artifact
+            assert Application(
+                application_yaml)[provider]['package'][0]['name'] == artifact
 
         # Test: Missing Accelize DRM configuration
         application = mock_application(

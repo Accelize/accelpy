@@ -141,30 +141,16 @@ class Host:
 
         # Get application and its definition
         self._init_application_definition(application)
-
-        def app(section, key):
-            """
-            Get application value for specified provider
-
-            Args:
-                section (str): Definition section.
-                key (str): Definition key.
-
-            Returns:
-                Value
-            """
-            return self._application.get(section, key, env=provider)
-
-        fpga_count = app('fpga', 'count')
-        package_name = app('package', 'name')
-        application_type = app('application', 'type')
-        accelize_drm_enable = app('accelize_drm', 'use_service')
+        app = self._application[provider]
+        fpga_count = app['fpga']['count']
+        application_type = app['application']['type']
+        accelize_drm_enable = app['accelize_drm']['use_service']
         name = self._name
 
         # Check Accelize DRM Requirements
         accelize_drm_cred_json = self._init_accelize_cred(user_config)
         accelize_drm_conf_json = self._init_accelize_conf(
-            app('accelize_drm', 'conf'), accelize_drm_enable, provider)
+            app['accelize_drm']['conf'], accelize_drm_enable, provider)
 
         # Lazy import, because may not be always used
         from concurrent.futures import ThreadPoolExecutor
@@ -174,19 +160,17 @@ class Host:
         ansible_env = Ansible.environment()
         ansible_exec = Ansible.playbook_exec()
         ansible_variables = dict(
-            fpga_image=app('fpga', 'image'),
-            fpga_driver=app('fpga', 'driver'),
-            fpga_driver_version=app('fpga', 'driver_version'),
+            fpga_image=app['fpga']['image'],
+            fpga_driver=app['fpga']['driver'],
+            fpga_driver_version=app['fpga']['driver_version'],
             fpga_slots=[slot for slot in range(fpga_count)],
-            firewall_rules=self._application['firewall_rules'],
-            package_name=package_name,
-            package_version=app('package', 'version'),
-            package_repository=app('package', 'repository'),
+            firewall_rules=app['firewall_rules'],
+            app_packages=app['package'],
             accelize_drm_disabled=not accelize_drm_enable,
             accelize_drm_conf_src=accelize_drm_conf_json,
             accelize_drm_cred_src=accelize_drm_cred_json
         )
-        ansible_variables.update(app('application', 'variables'))
+        ansible_variables.update(app['application']['variables'])
 
         # Set Packer variables
         packer_variables = {
@@ -203,10 +187,10 @@ class Host:
             ansible=' '.join(
                 [f'{key}={value}' for key, value in ansible_env.items()] +
                 [ansible_exec]),
-            firewall_rules=self._application['firewall_rules'],
+            firewall_rules=app['firewall_rules'],
             fpga_count=fpga_count,
-            package_vm_image=package_name if app(
-                'package', 'type') == 'vm_image' else '',
+            package_vm_image=app['package'][0]['name']
+            if app['package'][0]['type'] == 'vm_image' else '',
             host_name=name,
             host_provider=provider
         )
@@ -345,9 +329,9 @@ class Host:
         if update_application:
             provider = json_read(self._user_parameters_json)['provider']
             try:
-                section = self._application['package'][provider]
+                section = self._application['package'][0][provider]
             except KeyError:
-                section = self._application['package'][provider] = dict()
+                section = self._application['package'][0][provider] = dict()
 
             section['type'] = 'vm_image'
             section['name'] = image

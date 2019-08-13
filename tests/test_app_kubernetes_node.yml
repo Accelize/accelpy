@@ -5,8 +5,8 @@ application:
   version: 1.0.0
 
 firewall_rules:
-  - start_port: 8080
-    end_port: 8080
+  - start_port: 30080
+    end_port: 30080
     protocol: tcp
     direction: ingress
 
@@ -16,9 +16,10 @@ fpga:
   count: 1
 
 package:
-  aws,eu-west-1,f1:
+  - type: kubernetes_yaml
     name: https://raw.githubusercontent.com/Accelize/accelpy/master/tests/app_kubernetes_pod-aws_f1.yml
-  type: kubernetes_deployment
+  - type: kubernetes_yaml
+    name: https://raw.githubusercontent.com/Accelize/accelpy/master/tests/app_kubernetes_service-aws_f1.yml
 
 accelize_drm:
   conf:
@@ -26,3 +27,6 @@ accelize_drm:
       url: https://master.metering.accelize.com
     drm:
       frequency_mhz: 100
+
+test:
+  shell: curl -sS $(accelpy public_ip):30080

@@ -93,20 +93,21 @@ def test_ansible_lint():
     from concurrent.futures import ThreadPoolExecutor
     from os import scandir, walk
     from os.path import dirname, join, splitext
+    from subprocess import STDOUT
+
     from accelpy._ansible import __file__ as ansible_py_file
 
     futures = []
-    success = True
     roles = []
     with scandir(join(dirname(ansible_py_file), 'roles')) as entries:
         for entry in entries:
             if entry.is_dir():
                 roles.append(entry.path)
 
+    kwargs = dict(pipe_stdout=True, check=False, stderr=STDOUT)
     with ThreadPoolExecutor() as executor:
         for role in roles:
-            futures.append(executor.submit(
-                ansible_lint, role, pipe_stdout=True, check=False))
+            futures.append(executor.submit(ansible_lint, role, **kwargs))
 
             yml_files = []
             for root, _, files in walk(role):
@@ -114,15 +115,13 @@ def test_ansible_lint():
                     if splitext(name)[1].lower() in ('.yml', '.yaml'):
                         yml_files.append(join(root, name))
 
-            futures.append(executor.submit(
-                yaml_lint, yml_files, pipe_stdout=True, check=False))
+            futures.append(executor.submit(yaml_lint, yml_files, **kwargs))
 
+    message = []
     for future in futures:
         result = future.result()
         if result.returncode:
-            success = False
-        if result.stdout:
-            print(result.stdout)
+            message.append(result.stdout)
 
-    if not success:
-        pytest.fail(pytrace=False)
+    if message:
+        pytest.fail("\n".join(message), pytrace=False)

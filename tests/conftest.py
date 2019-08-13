@@ -36,11 +36,11 @@ def parametrize_application_yml(argvalues, ids):
             name, ext = splitext(entry.name)
             if ext == '.yml' and name.startswith('test_'):
                 app = Application(entry.path)
-                if 'test' not in app._definition and not app.environments:
+                if 'test' not in app._definition and not app.providers:
                     continue
 
                 name = name.split("_", 1)[1].replace('_', '-')
-                for provider in app.environments:
+                for provider in app.providers:
                     ids.append(f'{name}_{provider.replace(",", "-")}')
                     argvalues.append(dict(path=entry.path, provider=provider))
 

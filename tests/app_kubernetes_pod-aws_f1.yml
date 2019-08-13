@@ -1,27 +1,37 @@
 ---
-# From Xilinx AWS device plugin example:
-# https://github.com/Xilinx/FPGA_as_a_Service/blob/master/k8s-fpga-device-plugin/trunk/aws/mypod.yaml
-
-apiVersion: v1
-kind: Pod
+apiVersion: apps/v1
+kind: Deployment
 metadata:
-  name: kubernetes_node_test
+  name: kubernetes-node-test
+  labels:
+    app: kubernetes-node-test
 spec:
-  containers:
-  - name: my-pod
-    image: accelize/accelpy-ci:container_service
-    ports:
-      - containerPort: 8080
-    # FPGA container access
-    securityContext:
-      privileged: true
-    resources:
-      limits:
-        xilinx.com/fpga-xilinx_aws-vu9p-f1-04261818_dynamic_5_0-0: 1
-    volumeMounts:
-      - name: sys
-        mountPath: /sys
-  volumes:
-    - name: sys
-      hostPath:
-        path: /sys
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kubernetes-node-test
+  template:
+    metadata:
+      labels:
+        app: kubernetes-node-test
+    spec:
+      containers:
+        - name: kubernetes-node-test
+          image: accelize/accelpy-ci:container_service
+          ports:
+            - containerPort: 8080
+          # FPGA container access
+          # From Xilinx AWS device plugin example:
+          # https://github.com/Xilinx/FPGA_as_a_Service/blob/master/k8s-fpga-device-plugin/trunk/aws/mypod.yaml
+          securityContext:
+            privileged: true
+          resources:
+            limits:
+              xilinx.com/fpga-xilinx_aws-vu9p-f1-04261818_dynamic_5_0-0: 1
+          volumeMounts:
+            - name: sys
+              mountPath: /sys
+      volumes:
+        - name: sys
+          hostPath:
+            path: /sys

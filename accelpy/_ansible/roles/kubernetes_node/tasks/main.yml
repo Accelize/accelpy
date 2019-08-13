@@ -6,29 +6,34 @@
     state: present
   retries: 10
   delay: 1
+  when: master_node | bool
 
 - name: Ensure kubectl bash completion is enabled for current user
   lineinfile:
     path: "/home/{{ ansible_user }}/.bashrc"
     line: source <(kubectl completion bash)
     state: present
+  when: master_node | bool
 
 - name: Ensure ".kube" directory exists in current user home directory
   file:
     path: "/home/{{ ansible_user }}/.kube"
     state: directory
+  when: master_node | bool
 
 - name: Ensure current user has read access to the K8s configuration
   file:
     path: /etc/kubernetes/admin.conf
     group: "{{ ansible_user }}"
     mode: 0640
+  when: master_node | bool
 
 - name: Symlink the kubectl "admin.conf" to "~/.kube/conf"
   file:
     src: /etc/kubernetes/admin.conf
     dest: "/home/{{ ansible_user }}/.kube/config"
     state: link
+  when: master_node | bool
 
 - name: Ensure FPGA Kubernetes device plugin is present
   get_url:
@@ -46,9 +51,10 @@
   delay: 1
 
 - name: Ensure FPGA Kubernetes device plugin is enabled as deamonset
-  command: kubectl create -f /etc/kubernetes/fpga-device-plugin.yml
+  command: kubectl apply -f /etc/kubernetes/fpga-device-plugin.yml
   when: master_node | bool
 
-- name: Ensure Kubernetes deployment/pod is deployed
-  command: "kubectl apply -f {{ package_name }}"
-  when: master_node | bool
+- name: Ensure Kubernetes YAML files are applied
+  command: "kubectl apply -f {{ item.name }}"
+  when: master_node | bool and (item.type == "kubernetes_yaml")
+  with_items: "{{ app_packages }}"

@@ -11,7 +11,7 @@ firewall_rules:
     direction: ingress
 
 fpga:
-  host,aws-eu-west-1:
+  host,aws-eu-west-1-f1:
     image: agfi-071909cc191313a51
     driver: aws_f1
 
