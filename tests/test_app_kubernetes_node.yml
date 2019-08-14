@@ -16,10 +16,8 @@ fpga:
   count: 1
 
 package:
-  - type: kubernetes_yaml
-    name: https://raw.githubusercontent.com/Accelize/accelpy/master/tests/app_kubernetes_pod-aws_f1.yml
-  - type: kubernetes_yaml
-    name: https://raw.githubusercontent.com/Accelize/accelpy/master/tests/app_kubernetes_service-aws_f1.yml
+  type: kubernetes_yaml
+  name: https://raw.githubusercontent.com/Accelize/accelpy/master/tests/app_kubernetes_node-aws_f1.yml
 
 accelize_drm:
   conf:

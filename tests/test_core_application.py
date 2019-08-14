@@ -415,3 +415,62 @@ fpga:
 """)
     with pytest.raises(ConfigurationException):
         Application(yml_file)
+
+
+@pytest.mark.require_csp
+def test_web_service_integration():
+    """
+    Test web service integration.
+    """
+    from accelpy._common import request
+    from accelpy._application import Application
+    from random import randint
+
+    # Use dev environment
+    request_endpoint = request._endpoint
+    request._endpoint = 'https://master.devmetering.accelize.com'
+
+    product_id = 'accelize.com/accelpy/ci'
+    version = f'{randint(0, 255)}.{randint(0, 255)}.{randint(0, 255)}'
+    application = f'{product_id}:{version}'
+
+    definition = dict(
+        application=dict(
+            product_id=product_id, type='container_service', version=version),
+        fpga=dict(image='nothing'),
+        package=dict(name='nothing', type='container_image'),
+        accelize_drm=dict(use_service=False))
+
+    try:
+        scr_app = Application(definition)
+
+        # Test: push
+        scr_app.push()
+
+        # Test: Get
+        srv_app = Application.from_id(application)
+        assert scr_app._definition == srv_app._definition
+
+        # Test: List
+        assert product_id in Application.list()
+
+        # Test: List with prefix
+        assert product_id in Application.list('accelize.com/accelpy')
+
+        # Test: List version
+        assert version in Application.list_versions(product_id)
+
+        # Test: List version with prefix
+        assert version in Application.list_versions(
+            product_id, version.split('.', 1)[0])
+
+        # Test: Delete
+        Application.delete(application)
+        assert version not in Application.list_versions(product_id)
+
+    finally:
+        try:
+            Application.delete(application)
+        except Exception:
+            pass
+        request._endpoint = request_endpoint

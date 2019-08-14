@@ -1,3 +1,4 @@
 ---
 single_node: true
 master_node: true
+kubernetes_join_command: pwd  # Do nothing, just to avoid crash

@@ -268,12 +268,11 @@ def _application_completer(prefix, parsed_args, **__):
 
     # If not 100% sure the application is a local file, get applications from
     # the web service, but avoid to call it every time for performance reason.
-    # - "." may be found in paths likes "./" or as file extension delimiter, it
-    #   cannot be found in the product_id, but may be found in the version
-    #   (In this case, the delimiter ":" is also present).
+    # - Only path should starts with "." or "/"
     # - Product ID is in format "vendor/library/name" should not contain more
     #   than 2 "/"
-    if ("." not in prefix or ':' in prefix) and prefix.count('/') <= 2:
+    if (not prefix.startswith('.') and not prefix.startswith('/') and
+            prefix.count('/') <= 2):
         from itertools import chain
         from accelpy._application import Application
         from accelpy.exceptions import (

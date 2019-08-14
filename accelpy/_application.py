@@ -1,5 +1,6 @@
 # coding=utf-8
 """Application Definition"""
+from json import dumps
 from os import fsdecode
 from re import fullmatch
 
@@ -89,10 +90,12 @@ class Application:
         definition (path-like object or dict):
             Path to yaml definition file or dict of the content of the
             definition.
+        configuration_id (int): ID of configuration in Accelize web service.
     """
 
-    def __init__(self, definition):
+    def __init__(self, definition, configuration_id=None):
         self._providers = set()
+        self._configuration_id = configuration_id
 
         # Load from dict
         if isinstance(definition, dict):
@@ -125,22 +128,35 @@ class Application:
 
         Args:
             application (str): Application if format "product_id:version" or
-                "product_id".
+                "product_id". If version is not specified, last stable version
+                available will be used.
 
         Returns:
             Application: Application definition.
         """
-        # Get product ID and version
-        try:
-            product_id, version = application.split(':', 1)
-        except ValueError:
-            product_id = application
-            version = None
+        definition = cls._get_definition(application)
+        configuration_id = definition['application'].pop('configuration_id')
+        return cls(definition, configuration_id=configuration_id)
 
-        # Get definition from server
-        response = request.query('/auth/getapplicationdefinition/',
-                                 dict(product_id=product_id, version=version))
-        return cls(response)
+    @staticmethod
+    def _get_definition(application):
+        """
+        Load application from Accelize web service.
+
+        Args:
+            application (str): Application if format "product_id:version" or
+                "product_id".
+
+        Returns:
+            dict: Raw definition from web service.
+        """
+        params = dict(limit=1)
+        try:
+            params['product_id'], params['version'] = application.split(':', 1)
+        except ValueError:
+            params['product_id'] = application
+        return request.query('/auth/objects/productconfiguration/',
+                             params=params)['results'][0]
 
     @staticmethod
     def list(prefix=''):
@@ -148,14 +164,14 @@ class Application:
         List available applications on Accelize web service.
 
         Args:
-            product_id (str): Product ID linked to the application.
             prefix (str): Product ID prefix to filter.
 
         Returns:
             list of str: products.
         """
-        return request.query('/auth/listapplicationdefinitions/',
-                             dict(prefix=prefix))
+        return request.query(
+            '/auth/objects/productconfigurationlistproduct/', params=dict(
+                product_id__startswith=prefix) if prefix else None)['results']
 
     @staticmethod
     def list_versions(product_id, prefix=''):
@@ -169,15 +185,49 @@ class Application:
         Returns:
             list of str: versions.
         """
-        return request.query('/auth/listapplicationdefinitionversions/',
-                             dict(product_id=product_id, prefix=prefix))
+        params = dict(product_id=product_id)
+        if prefix:
+            params['version__startswith'] = prefix
+        return request.query('/auth/objects/productconfigurationlistversion/',
+                             params=params)['results']
 
     def push(self):
         """
         Push application definition on Accelize web service.
         """
-        return request.query('/auth/pushapplicationdefinition/',
-                             self._definition, 'post')
+        self._configuration_id = request.query(
+            '/auth/objects/productconfiguration/',
+            data=dumps(self._clean_definition),
+            method='post')['application']['configuration_id']
+
+    @classmethod
+    def delete(cls, application):
+        """
+        Delete application definition on Accelize web service.
+
+        Args:
+            application (str or int): Application if format "product_id:version"
+                or "product_id" or configuration ID in Accelize web service.
+                If specific version of ID not specified, will delete the last
+                stable version.
+        """
+        if not isinstance(application, int):
+            # Get configuration ID
+            application = cls._get_definition(
+                application)['application']['configuration_id']
+
+        request.query(f'/auth/objects/productconfiguration/{application}/',
+                      method='delete')
+
+    @property
+    def configuration_id(self):
+        """
+        Configuration ID in Accelize web service.
+
+        Returns:
+            int: ID
+        """
+        return self._configuration_id
 
     @property
     def providers(self):
@@ -249,7 +299,39 @@ class Application:
         Args:
             path (path-like object): Path where save Yaml definition file.
         """
-        yaml_write(self._definition, path or self._path)
+        yaml_write(self._clean_definition, path or self._path)
+
+    @property
+    def _clean_definition(self):
+        """
+        Return definition cleaned up from empty values.
+
+        Returns:
+            dict: definition
+        """
+        from copy import deepcopy
+
+        definition = deepcopy(self._definition)
+        for section_name in tuple(definition):
+            section = definition[section_name]
+
+            if isinstance(section, list):
+                for element in tuple(section):
+                    for key in tuple(element):
+                        if not element[key] and element[key] is not False:
+                            del element[key]
+                    if not element:
+                        section.remove(element)
+
+            else:
+                for key in tuple(section):
+                    if not section[key] and section[key] is not False:
+                        del section[key]
+
+            if not section:
+                del definition[section_name]
+
+        return definition
 
     def _validate(self, definition):
         """

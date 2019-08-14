@@ -25,9 +25,6 @@ _cache = dict()
 HOME_DIR = _expanduser('~/.accelize')
 CACHE_DIR = _join(HOME_DIR, '.cache')
 
-#: Accelize endpoint
-ACCELIZE_ENDPOINT = 'https://master.metering.accelize.com'
-
 # Ensure directory exists and have restricted access rights
 _makesdirs(CACHE_DIR, exist_ok=True)
 _chmod(HOME_DIR, 0o700)
@@ -423,11 +420,14 @@ class _Request:
     Request to accelize server.
     """
     _TIMEOUT = 10
+    _RETRIES = 3
+    _ENDPOINT = 'https://master.metering.accelize.com'
 
     def __init__(self):
         self._token_expire = None
         self._token = None
         self._session = None
+        self._endpoint = self._ENDPOINT
 
     def _get_session(self):
         """
@@ -439,18 +439,28 @@ class _Request:
         if self._session is None:
             # Lazy import, may never be called
             from requests import Session
+            from requests.adapters import HTTPAdapter
+            from urllib3.util.retry import Retry
+
+            # Create session with automatic retries on some error codes
+            adapter = HTTPAdapter(max_retries=Retry(
+                total=self._RETRIES, read=self._RETRIES, connect=self._RETRIES,
+                backoff_factor=0.3, status_forcelist=(408, 500, 502, 504)))
+
             self._session = Session()
+            self._session.mount('http://', adapter)
+            self._session.mount('https://', adapter)
 
         return self._session
 
-    def query(self, path, data=None, method='get'):
+    def query(self, path, method='get', **kwargs):
         """
         Performs a query.
 
         Args:
             path (str): URL path
-            data (dict): data.
             method (str): Request method.
+            kwargs: Requests query kwargs.
 
         Returns:
             dict or list: Response.
@@ -459,12 +469,13 @@ class _Request:
 
         while True:
             # Get response
+            token = self._get_token()
             response = getattr(self._get_session(), method)(
-                ACCELIZE_ENDPOINT + path, data=data,
-                headers={"Authorization": "Bearer " + self._get_token(),
-                         "Content-Type": "application/json",
-                         "Accept": "application/vnd.accelize.v1+json"},
-                timeout=self._TIMEOUT)
+                self._endpoint + path, headers={
+                    "Authorization": "Bearer " + token,
+                    "Content-Type": "application/json",
+                    "Accept": "application/vnd.accelize.v1+json"},
+                timeout=self._TIMEOUT, **kwargs)
 
             # Token may be invalid
             if response.status_code == 401 and not retried:
@@ -476,7 +487,10 @@ class _Request:
             elif response.status_code >= 300:
                 raise _ConfigurationException(self._get_error_message(response))
 
-            return response.json()
+            try:
+                return response.json()
+            except _JSONDecodeError:
+                return
 
     def _get_error_message(self, response):
         """
@@ -489,7 +503,7 @@ class _Request:
             str: Error message.
         """
         try:
-            return response.json()["error"]
+            return response.json()["detail"]
         except (KeyError, _JSONDecodeError):
             return response.text
 
@@ -514,6 +528,9 @@ class _Request:
             client_id = credentials['client_id']
             client_secret = credentials['client_secret']
 
+            # Endpoint override in credentials file
+            self._endpoint = credentials.get('endpoint', self._ENDPOINT)
+
             # Try to get from cache
             try:
                 self._token, self._token_expire = get_cli_cache(client_id)
@@ -521,7 +538,7 @@ class _Request:
             # Try to get from web service
             except TypeError:
                 response = self._get_session().post(
-                    f'{ACCELIZE_ENDPOINT}/o/token/',
+                    f'{self._endpoint}/o/token/',
                     data={"grant_type": "client_credentials"},
                     auth=(client_id, client_secret),
                     timeout=self._TIMEOUT)

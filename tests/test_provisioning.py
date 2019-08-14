@@ -41,7 +41,7 @@ def test_application(application_yml, tmpdir):
         tmpdir (py.path.local) tmpdir pytest fixture.
     """
     from os import environ
-    from time import sleep
+    from time import sleep, time
     from subprocess import run, STDOUT, PIPE
     import accelpy._host as accelpy_host
     from accelpy._host import Host
@@ -90,12 +90,16 @@ def test_application(application_yml, tmpdir):
                         command = command.replace(
                             shell_var, getattr(host, attr))
 
-                # Run test command
-                sleep(5)
-
+                # Run test command (With retries during 1 minute)
                 print(f'\nRunning test command:\n{command.strip()}\n')
-                result = run(command, universal_newlines=True,
-                             stderr=STDOUT, stdout=PIPE, shell=True)
+                timeout = time() + 60
+                while time() < timeout:
+                    result = run(command, universal_newlines=True,
+                                 stderr=STDOUT, stdout=PIPE, shell=True)
+                    if not result.returncode:
+                        break
+                    sleep(1)
+
                 print(f'\nTest command returned: '
                       f'{result.returncode}\n{result.stdout}')
 

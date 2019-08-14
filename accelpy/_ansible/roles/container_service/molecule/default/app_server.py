@@ -12,8 +12,9 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
         """GET"""
         process = run(['/opt/xilinx/xrt/bin/awssak', 'list'],
                       stderr=STDOUT, stdout=PIPE)
-        self.send_response(500 if (
-                process.returncode or b"[0] " not in process.stdout) else 200)
+        self.send_response(
+            500 if (process.returncode or b"error" in process.stdout.lower())
+            else 200)
         self.end_headers()
         self.wfile.write(process.stdout)
 
