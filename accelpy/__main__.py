@@ -252,6 +252,66 @@ def _yaml_completer(prefix, parsed_args, **__):
                 yield path
 
 
+def _get_cached_app(prefix, name, after, getter):
+    """
+    Get from cache if available, else get from web server.
+
+    Args:
+        prefix (str): Application prefix to filter.
+        name (str): Cache name to use.
+        after (iterable): Iterable after which chain .
+        getter (function): Function ot use to get from web server.
+
+    Returns:
+        iterable of str:
+    """
+    from itertools import chain
+    from accelpy._common import get_cli_cache, set_cli_cache
+
+    cached = f'{name}|{prefix}'
+    values = get_cli_cache(cached, recursive=True)
+
+    # If no cached values, get from web server then cache values
+    if not values:
+        values = set_cli_cache(cached, getter(prefix))
+
+    # If cached values, filter before return
+    else:
+        values = (value for value in values if value.startswith(prefix))
+
+    return chain(after, values)
+
+
+def _get_product_ids(prefix):
+    """
+    Get products IDs from web server.
+
+    Args:
+        prefix (str): Application prefix to filter.
+
+    Returns:
+        list of str: Product ids.
+    """
+    from accelpy._application import Application
+    return Application.list(prefix)
+
+
+def _get_versions(prefix):
+    """
+    Get versions from web server.
+
+    Args:
+        prefix (str): Application prefix to filter.
+
+    Returns:
+        list of str: Versions.
+    """
+    from accelpy._application import Application
+    product_id, version_prefix = prefix.split(':', 1)
+    return (f"{product_id}:{version}" for version in
+            Application.list_versions(product_id, version_prefix))
+
+
 def _application_completer(prefix, parsed_args, **__):
     """
     Autocomplete "accelpy init --application"
@@ -273,32 +333,29 @@ def _application_completer(prefix, parsed_args, **__):
     #   than 2 "/"
     if (not prefix.startswith('.') and not prefix.startswith('/') and
             prefix.count('/') <= 2):
-        from itertools import chain
-        from accelpy._application import Application
+
         from accelpy.exceptions import (
-            AuthenticationException, AccelizeException)
+            AuthenticationException, WebServerException)
 
         try:
             # "product_id:version" formatted
             if ':' in prefix:
-                # TODO: Enable result caching
-                product_id, prefix = prefix.split(':', 1)
-
-                return chain(yaml_applications, (
-                    f"{product_id}:{version}" for version in
-                    Application.list_versions(product_id, prefix)))
+                name = 'version'
+                getter = _get_versions
 
             # "product_id" formatted
             else:
-                # TODO: Enable result caching
-                return chain(yaml_applications, Application.list(prefix))
+                name = 'product'
+                getter = _get_product_ids
+
+            return _get_cached_app(prefix, name, yaml_applications, getter)
 
         except AuthenticationException as exception:
             _completer_warn(
                 '"--application"/"-a" argument autocompletion require '
                 f'Accelize authentication: {exception}')
 
-        except AccelizeException:
+        except WebServerException:
             # Skip silently any other Accelize web service error.
             pass
 
@@ -327,7 +384,7 @@ def _provider_completer(prefix, parsed_args, **_):
     from accelpy._common import get_cli_cache, set_cli_cache
 
     application = abspath(application) if isfile(application) else application
-    cached = f'{application}_providers'
+    cached = f'providers|{application}'
     providers = get_cli_cache(cached)
 
     # Else get providers from application and cache them
@@ -525,7 +582,7 @@ def _run_command():
             parser.error('\n'.join(message))
         raise
 
-    except KeyboardInterrupt:
+    except KeyboardInterrupt:  # pragma: no cover
         parser.exit(status=1, message="Interrupted by user\n")
 
 

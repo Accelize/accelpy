@@ -151,8 +151,12 @@ def test_cli_cache(tmpdir):
         # Test set cache
         set_cli_cache('test1', value)
 
-        # Test get from get
+        # Test get from cache
         assert get_cli_cache('test1') == value
+
+        # Test get from cache recursively
+        assert get_cli_cache('test1', recursive=True) == value
+        assert get_cli_cache('test12', recursive=True) == value
 
         # Test expiry from timestamp (Ensure always expired)
         set_cli_cache('test2', value, expiry_timestamp=int(time()) - 1)
@@ -169,3 +173,226 @@ def test_cli_cache(tmpdir):
     finally:
         common.CACHE_DIR = common_cache_dir
         del environ['ACCELPY_CLI']
+
+
+def test_accelize_ws_session(tmpdir):
+    """
+    Test Accelize Web Service session
+
+    Args:
+        tmpdir (py.path.local) tmpdir pytest fixture
+    """
+    from io import BytesIO
+    from os import environ
+    from json import dumps
+    from time import time
+    from requests import Response, Session
+    import accelpy._common as common
+    from accelpy._common import _AccelizeWSSession, json_write
+    from accelpy.exceptions import AuthenticationException, WebServerException
+
+    # Mock cache
+    environ['ACCELPY_CLI'] = 'True'
+    common_cache_dir = common.CACHE_DIR
+    common.CACHE_DIR = str(tmpdir.join('cache_01').ensure(dir=True))
+
+    # Mock get_accelize_cred
+    cred_json = str(tmpdir.join('cred.json'))
+    json_write(dict(client_id='accelpy_testing', client_secret=''), cred_json)
+    common_get_accelize_cred = common.get_accelize_cred
+
+    def get_accelize_cred():
+        """
+        Returns bad credentials.
+
+        Returns:
+            str: path
+        """
+        return cred_json
+
+    common.get_accelize_cred = get_accelize_cred
+
+    # Test Session initialization
+    session = _AccelizeWSSession()
+    assert session._request
+
+    # Mock server response
+    resp_status_code = 200
+    resp_content = dict(key='value')
+    auth_status_code = 200
+    auth_expire_in = 9999
+
+    class _Session(Session):
+        """Mocked requests.Session"""
+        raw_error = False
+
+        @classmethod
+        def request(cls, method, url, **_):
+            """Returns mocked response"""
+            if '/o/token/' in url:
+                status_code = auth_status_code
+                content = dumps(dict(
+                    access_token='access_token', expires_in=auth_expire_in))
+            else:
+                status_code = resp_status_code
+                content = dumps(resp_content) if resp_content else ''
+
+            if status_code != 200:
+                if cls.raw_error:
+                    content = dumps(dict(detail='error'))
+                else:
+                    # Test return a non JSON error once
+                    cls.raw_error |= True
+                    content = 'error'
+
+            response = Response()
+            response.raw = BytesIO(content.encode())
+            response.raw.seek(0)
+            response.status_code = status_code
+            return response
+
+    session._session = _Session()
+    session._session_request = session._session.request
+
+    # Tests
+    try:
+        # Test: invalid credentials
+        auth_status_code = 400
+        with pytest.raises(AuthenticationException):
+            session.request(path='')
+
+        # Test: get token from web service
+        auth_status_code = 200
+        session._token = ''
+        assert session.request(path='') == resp_content
+
+        # Test: get token from cache
+        auth_status_code = 500
+        session._token = ''
+        assert session.request(path='') == resp_content
+
+        # Test: use existing token
+        assert session.request(path='') == resp_content
+
+        # Test: renew token from web service if expired
+        common.CACHE_DIR = str(tmpdir.join('cache_02').ensure(dir=True))
+        session._token_expire = int(time()) - 10
+        with pytest.raises(AuthenticationException):
+            session.request(path='')
+
+        auth_status_code = 200
+        assert session.request(path='') == resp_content
+
+        # Test: Renew token if server reject it
+        resp_status_code = 401
+        with pytest.raises(WebServerException):
+            session.request(path='')
+        assert session._token
+
+        # Test: Empty response
+        resp_content = ''
+        resp_status_code = 200
+        assert session.request(path='') is None
+
+    # Restore mocked function
+    finally:
+        common.get_accelize_cred = common_get_accelize_cred
+        common.CACHE_DIR = common_cache_dir
+        del environ['ACCELPY_CLI']
+
+
+def test_color_str():
+    """
+    Test color_str
+    """
+    import accelpy._common as common
+    from accelpy._common import color_str
+
+    # Mock environment functions
+    is_cli = False
+
+    def _is_cli():
+        """Simulate CLI use"""
+        return is_cli
+
+    def no_color():
+        """Ensure color is enabled"""
+        return False
+
+    common_is_cli = common.is_cli
+    common_no_color = common.no_color
+    common.is_cli = _is_cli
+    common.no_color = no_color
+
+    # Tests
+    try:
+        # Test: CLI disabled
+        assert color_str('test', 'RED') == 'test'
+
+        # Test: ClI enabled
+        is_cli = True
+        assert 'test' in color_str('test', 'RED')
+
+        # Test: Colorama already initialized
+        assert common._cache.get('colorama_initialized')
+        assert 'test' in color_str('test', 'RED')
+
+    # Restore mocked functions
+    finally:
+        common.is_cli = common_is_cli
+        common.no_color = common_no_color
+
+
+def test_call():
+    """
+    Test call
+    """
+    from subprocess import CompletedProcess, PIPE
+    import accelpy._common as common
+    from accelpy.exceptions import RuntimeException
+    from accelpy._common import call
+
+    # Mock subprocess
+    retries = {}
+    returncode = 0
+
+    def run(*args, **kwargs):
+        """Mocker run"""
+        if retries:
+            # Simulate failure to retry
+            result = CompletedProcess(args, 1)
+            retries.clear()
+
+        else:
+            result = CompletedProcess(args, returncode)
+
+        result.kwargs = kwargs
+        return result
+
+    common_run = common._run
+    common._run = run
+
+    # Tests
+    try:
+
+        # Test: pipe_stdout
+        assert 'stdout' not in call([]).kwargs
+        assert call([], pipe_stdout=True).kwargs['stdout'] == PIPE
+
+        # Test: Passing keyword arguments
+        assert call([], testing=True).kwargs['testing'] is True
+
+        # Test: retries
+        retries[0] = 0
+        assert call([], retries=3).returncode == returncode
+        assert not retries
+
+        # Test: check
+        returncode = 1
+        assert call([], check=False).returncode == returncode
+        with pytest.raises(RuntimeException):
+            call([], check=True)
+
+    # Restore mocked functions
+    finally:
+        common._run = common_run

@@ -4,7 +4,7 @@ from json import dumps
 from os import fsdecode
 from re import fullmatch
 
-from accelpy._common import request
+from accelpy._common import accelize_ws_session
 from accelpy._yaml import yaml_read, yaml_write
 from accelpy.exceptions import ConfigurationException
 
@@ -155,8 +155,8 @@ class Application:
             params['product_id'], params['version'] = application.split(':', 1)
         except ValueError:
             params['product_id'] = application
-        return request.query('/auth/objects/productconfiguration/',
-                             params=params)['results'][0]
+        return accelize_ws_session.request(
+            '/auth/objects/productconfiguration/', params=params)['results'][0]
 
     @staticmethod
     def list(prefix=''):
@@ -169,7 +169,7 @@ class Application:
         Returns:
             list of str: products.
         """
-        return request.query(
+        return accelize_ws_session.request(
             '/auth/objects/productconfigurationlistproduct/', params=dict(
                 product_id__startswith=prefix) if prefix else None)['results']
 
@@ -188,14 +188,15 @@ class Application:
         params = dict(product_id=product_id)
         if prefix:
             params['version__startswith'] = prefix
-        return request.query('/auth/objects/productconfigurationlistversion/',
-                             params=params)['results']
+        return accelize_ws_session.request(
+            '/auth/objects/productconfigurationlistversion/',
+            params=params)['results']
 
     def push(self):
         """
         Push application definition on Accelize web service.
         """
-        self._configuration_id = request.query(
+        self._configuration_id = accelize_ws_session.request(
             '/auth/objects/productconfiguration/',
             data=dumps(self._clean_definition),
             method='post')['application']['configuration_id']
@@ -216,8 +217,9 @@ class Application:
             application = cls._get_definition(
                 application)['application']['configuration_id']
 
-        request.query(f'/auth/objects/productconfiguration/{application}/',
-                      method='delete')
+        accelize_ws_session.request(
+            f'/auth/objects/productconfiguration/{application}/',
+            method='delete')
 
     @property
     def configuration_id(self):

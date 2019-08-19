@@ -422,13 +422,13 @@ def test_web_service_integration():
     """
     Test web service integration.
     """
-    from accelpy._common import request
+    from accelpy._common import accelize_ws_session
     from accelpy._application import Application
     from random import randint
 
     # Use dev environment
-    request_endpoint = request._endpoint
-    request._endpoint = 'https://master.devmetering.accelize.com'
+    request_endpoint = accelize_ws_session._ENDPOINT
+    accelize_ws_session._ENDPOINT = 'https://master.devmetering.accelize.com'
 
     product_id = 'accelize.com/accelpy/ci'
     version = f'{randint(0, 255)}.{randint(0, 255)}.{randint(0, 255)}'
@@ -473,4 +473,4 @@ def test_web_service_integration():
             Application.delete(application)
         except Exception:
             pass
-        request._endpoint = request_endpoint
+        accelize_ws_session._endpoint = request_endpoint

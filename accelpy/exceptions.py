@@ -16,3 +16,7 @@ class RuntimeException(AccelizeException):
 
 class AuthenticationException(AccelizeException):
     """Authentication error"""
+
+
+class WebServerException(AccelizeException):
+    """Web Server error"""

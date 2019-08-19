@@ -95,7 +95,7 @@ class Packer(Utility):
         for build in manifest['builds']:
             if build['packer_run_uuid'] == last_run_uuid:
                 return build
-        else:
+        else:  # pragma: no cover
             # Should never raise
             raise RuntimeError(
                 f'No packer manifest for run with UUID {last_run_uuid}')

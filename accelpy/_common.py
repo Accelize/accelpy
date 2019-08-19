@@ -16,13 +16,14 @@ from time import time as _time
 from accelpy.exceptions import (
     RuntimeException as _RuntimeException,
     AuthenticationException as _AuthenticationException,
-    ConfigurationException as _ConfigurationException)
-
-# Cached value storage
-_cache = dict()
+    ConfigurationException as _ConfigurationException,
+    WebServerException as _WebServerException)
 
 #: User configuration directory
 HOME_DIR = _expanduser('~/.accelize')
+
+# Cached values storage
+_cache = dict()
 CACHE_DIR = _join(HOME_DIR, '.cache')
 
 # Ensure directory exists and have restricted access rights
@@ -281,11 +282,11 @@ def color_str(text, color):
     # Lazy import colorama only if required and skip if not available.
     try:
         from colorama import init, Fore
-    except ImportError:
+    except ImportError:  # pragma: no cover
         return text
 
     # Init colorama if not already done
-    if _cache.get('colorama_initialized'):
+    if not _cache.get('colorama_initialized'):
         init()
         _cache['colorama_initialized'] = True
 
@@ -353,13 +354,14 @@ def hash_cli_name(name):
     return blake2b(name.encode(), digest_size=32).hexdigest()
 
 
-def get_cli_cache(name):
+def get_cli_cache(name, recursive=False):
     """
-    Add an object to disk cache. Mainly used to avoid repeated web server
-    requests in CLI mode.
+    Get an object from disk cache.
 
     Args:
         name (str): Cache name.
+        recursive (bool): If True, recursively search for cached values
+            starting by various "name" prefixes.
 
     Returns:
         dict or list or None: object, None if object is not cached.
@@ -367,10 +369,9 @@ def get_cli_cache(name):
     if not is_cli():
         return None
 
+    # List cached values candidates
     timestamp = _time()
-    cached_obj = None
-
-    hashed_name = hash_cli_name(name)
+    candidates = {}
     for filename in _listdir(CACHE_DIR):
         path = _join(CACHE_DIR, filename)
         cached_name, expiry = filename.rsplit('_', 1)
@@ -379,33 +380,50 @@ def get_cli_cache(name):
         if int(expiry) < timestamp:
             try:
                 _remove(path)
-            except OSError:
-                # May be already removed by another accelpy instance
-                pass
+                continue
+            except OSError:  # pragma: no cover
+                # Should never raise, May be already removed by another accelpy
+                # instance
+                continue
+
+        # Memorize candidates cached files
+        candidates[cached_name] = path
+
+    if not candidates:
+        return
+
+    # Get cached value, or return None
+    if recursive:
+        names = []
+        while name:
+            names.append(name)
+            name = name[:-1]
+    else:
+        names = name,
+
+    for hashed_name in (hash_cli_name(name) for name in names):
+        try:
+            return json_read(candidates[hashed_name])
+        except KeyError:
             continue
-
-        # Get cached value
-        if cached_name == hashed_name:
-            cached_obj = json_read(path)
-
-            # Does not return immediately to ensure cleaning all expired
-            # cached objects
-
-    return cached_obj
 
 
 def set_cli_cache(name, obj, expiry_timestamp=None, expiry_seconds=30):
     """
-    Get an object from disk cache.
+    Add an object to disk cache. Mainly used to avoid repeated web server
+    requests in CLI mode.
 
     Args:
         name (str): Cache name.
         obj (dict or list): Object to cache.
         expiry_timestamp (int): Expiry timestamp.
         expiry_seconds (int): Number of seconds before expiration.
+
+    Returns:
+        dict or list: obj
     """
     if not is_cli():
-        return
+        return obj
 
     if expiry_timestamp is None:
         expiry_timestamp = int(_time()) + expiry_seconds
@@ -414,27 +432,32 @@ def set_cli_cache(name, obj, expiry_timestamp=None, expiry_seconds=30):
     json_write(obj, path)
     _chmod(path, 0o600)
 
+    return obj
 
-class _Request:
+
+class _AccelizeWSSession:
     """
-    Request to accelize server.
+    Accelize Web Service session.
     """
     _TIMEOUT = 10
     _RETRIES = 3
     _ENDPOINT = 'https://master.metering.accelize.com'
 
     def __init__(self):
-        self._token_expire = None
-        self._token = None
+        self._token_expire = 0
+        self._token = ''
         self._session = None
+        self._session_request = None
         self._endpoint = self._ENDPOINT
 
-    def _get_session(self):
+    @property
+    def _request(self):
         """
-        Requests Session
+        Returns low level method that does not handle authentication but handle
+        session initialization.
 
         Returns:
-            requests.Session
+            requests.Response
         """
         if self._session is None:
             # Lazy import, may never be called
@@ -450,17 +473,18 @@ class _Request:
             self._session = Session()
             self._session.mount('http://', adapter)
             self._session.mount('https://', adapter)
+            self._session_request = self._session.request
 
-        return self._session
+        return self._session_request
 
-    def query(self, path, method='get', **kwargs):
+    def request(self, path, method='get', **kwargs):
         """
-        Performs a query.
+        Performs a request with automatic authentication handling.
 
         Args:
             path (str): URL path
             method (str): Request method.
-            kwargs: Requests query kwargs.
+            kwargs: "Requests.Session.request" keyword arguments.
 
         Returns:
             dict or list: Response.
@@ -468,31 +492,37 @@ class _Request:
         retried = False
 
         while True:
-            # Get response
-            token = self._get_token()
-            response = getattr(self._get_session(), method)(
-                self._endpoint + path, headers={
-                    "Authorization": "Bearer " + token,
+            # Get authentication token if not already exists
+            self._authenticate()
+
+            # Perform request
+            response = self._request(
+                method, self._endpoint + path, headers={
+                    "Authorization": "Bearer " + self._token,
                     "Content-Type": "application/json",
                     "Accept": "application/vnd.accelize.v1+json"},
                 timeout=self._TIMEOUT, **kwargs)
 
-            # Token may be invalid
+            # Authentication token may be invalid, retry with a new one
             if response.status_code == 401 and not retried:
-                self._token = None
-                self._token_expire = None
+                self._token = ''
+                self._token_expire = 0
                 retried = True
                 continue
 
+            # Handle HTTP status
             elif response.status_code >= 300:
-                raise _ConfigurationException(self._get_error_message(response))
+                raise _WebServerException(self._get_error_message(response))
 
+            # Return response content as JSON
             try:
                 return response.json()
             except _JSONDecodeError:
+                # Some responses return empty content
                 return
 
-    def _get_error_message(self, response):
+    @staticmethod
+    def _get_error_message(response):
         """
         Return error message from response.
 
@@ -507,12 +537,9 @@ class _Request:
         except (KeyError, _JSONDecodeError):
             return response.text
 
-    def _get_token(self):
+    def _authenticate(self):
         """
-        Get Accelize access token from credentials.
-
-        Returns:
-            str: Access token.
+        Authenticate user from its credentials.
 
         Raises:
             apyfal.exceptions.ClientAuthenticationException:
@@ -520,10 +547,11 @@ class _Request:
         """
         # Check if token expired
         if self._token_expire and self._token_expire < _time():
-            self._token = None
+            self._token = ''
 
-        # Get token
-        if self._token is None:
+        # Get OAuth2 token
+        if not self._token:
+            # Get user credentials
             credentials = json_read(get_accelize_cred())
             client_id = credentials['client_id']
             client_secret = credentials['client_secret']
@@ -531,14 +559,14 @@ class _Request:
             # Endpoint override in credentials file
             self._endpoint = credentials.get('endpoint', self._ENDPOINT)
 
-            # Try to get from cache
+            # Try to get CLI cached token
             try:
                 self._token, self._token_expire = get_cli_cache(client_id)
 
-            # Try to get from web service
+            # Try to get token from web service
             except TypeError:
-                response = self._get_session().post(
-                    f'{self._endpoint}/o/token/',
+                response = self._request(
+                    'post', f'{self._endpoint}/o/token/',
                     data={"grant_type": "client_credentials"},
                     auth=(client_id, client_secret),
                     timeout=self._TIMEOUT)
@@ -553,12 +581,9 @@ class _Request:
                 self._token = access['access_token']
                 self._token_expire = int(_time()) + access['expires_in'] - 1
 
-                # Cache token value for use in cli
-                set_cli_cache(
-                    client_id, [self._token, self._token_expire],
-                    self._token_expire)
-
-        return self._token
+                # Cache token value for future CLI usage
+                set_cli_cache(client_id, [self._token, self._token_expire],
+                              self._token_expire)
 
 
-request = _Request()
+accelize_ws_session = _AccelizeWSSession()

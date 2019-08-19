@@ -19,7 +19,8 @@ def _iter_hosts_names():
         for entry in scandir(CONFIG_DIR):
             if entry.is_dir():
                 yield entry.name
-    except OSError:
+    except OSError:  # pragma: no cover
+        # Should only raise if used before creating an host
         return
 
 
@@ -229,8 +230,8 @@ class Host:
         symlink(get_accelize_cred(user_config), accelize_drm_cred_json)
         return accelize_drm_cred_json
 
-    def _init_accelize_conf(self,
-                            accelize_drm_conf, accelize_drm_enable, provider):
+    def _init_accelize_conf(
+            self, accelize_drm_conf, accelize_drm_enable, provider):
         """
         Initialize Accelize DRM Configuration.
 
