@@ -44,6 +44,105 @@ def mock_application(source_dir, override=None):
     return application
 
 
+def test_application():
+    """
+    Test common Application features.
+    """
+    from json import loads
+    from copy import deepcopy
+    import accelpy._application as accelpy_app
+    from accelpy._application import Application
+    from accelpy.exceptions import RuntimeException
+
+    # Test: Load from dict
+    definition = {
+        'application': {
+            'product_id': 'my_product_id',
+            'version': '1.0.0',
+            'type': 'container_service'
+        },
+        'package': [{
+            'type': 'container_image',
+            'name': 'my_container_image'
+        }],
+        'fpga': {
+            'image': ['my_fpga_image'],
+            'count': 1
+        },
+        'accelize_drm': {
+            'use_service': False
+        }
+    }
+    app = Application(definition)
+
+    # Test: __getitem__
+    assert app['application']['product_id'] == 'my_product_id'
+
+    # Test: As dict
+    assert app.to_dict()['application']['product_id'] == 'my_product_id'
+
+    # Test: Cannot delete local application
+    with pytest.raises(RuntimeException):
+        app.delete()
+
+    # Mock server
+    accelpy_app_accelize_ws_session = accelpy_app.accelize_ws_session
+
+    class Server:
+        """Mocked server"""
+
+        @staticmethod
+        def request(path, *_, method='get', data=None, **__):
+            """Mocked server response"""
+
+            if '/productconfiguration/' in path:
+                if method == 'get':
+                    srv_def = deepcopy(definition)
+                    srv_def['application']['configuration_id'] = 2
+                    return dict(results=[srv_def])
+
+                elif method == 'post':
+                    assert loads(data) == definition, 'Pushed definition match'
+                    return {'application': {'configuration_id': 2}}
+
+                elif method == 'delete':
+                    assert path.endswith('/2/')
+                    return
+
+            elif ('/productconfigurationlistversion/' in path and
+                  method == 'get'):
+                return dict(results=['1.0.0'])
+
+            elif ('/productconfigurationlistproduct/' in path and
+                  method == 'get'):
+                return dict(results=['product'])
+
+            raise ValueError(f'path={path}; method={method}')
+
+    accelpy_app.accelize_ws_session = Server
+
+    # Test basic mocked server flow
+    try:
+        # Test: push
+        Application(definition).push()
+
+        # Test: Get
+        assert Application.from_id('app').to_dict() == definition
+
+        # Test: List
+        assert Application.list() == ['product']
+
+        # Test: List version
+        assert Application.list_versions('product') == ['1.0.0']
+        assert Application.list_versions('product', '1') == ['1.0.0']
+
+        # Test: Delete
+        Application.from_id('app').delete()
+
+    finally:
+        accelpy_app.accelize_ws_session = accelpy_app_accelize_ws_session
+
+
 def test_lint(tmpdir):
     """
     Test application definition file lint
@@ -90,9 +189,6 @@ fpga:
 """)
     app = Application(yml_file)
 
-    # Test: __getitem__
-    assert app['application']['product_id'] == 'my_product_id'
-
     # Test section _node
     assert isinstance(app['firewall_rules'], list)
     assert isinstance(app['application'], dict)
@@ -103,7 +199,7 @@ fpga:
     assert app['package'][0]['type'] == 'container_image'
     assert app['my_provider']['package'][0]['type'] == 'vm_image'
 
-    # Test: save
+    # Test: save and reload
     app['package'][0]['my_provider']['name'] = 'another_image'
     app.save()
     assert Application(
@@ -465,12 +561,12 @@ def test_web_service_integration():
             product_id, version.split('.', 1)[0])
 
         # Test: Delete
-        Application.delete(application)
+        srv_app.delete()
         assert version not in Application.list_versions(product_id)
 
     finally:
         try:
-            Application.delete(application)
+            srv_app.delete()
         except Exception:
             pass
         accelize_ws_session._endpoint = request_endpoint

@@ -1,12 +1,13 @@
 # coding=utf-8
 """Application Definition"""
+from copy import deepcopy
 from json import dumps
 from os import fsdecode
 from re import fullmatch
 
 from accelpy._common import accelize_ws_session
 from accelpy._yaml import yaml_read, yaml_write
-from accelpy.exceptions import ConfigurationException
+from accelpy.exceptions import ConfigurationException, RuntimeException
 
 # Application definition format
 FORMAT = {
@@ -90,16 +91,16 @@ class Application:
         definition (path-like object or dict):
             Path to yaml definition file or dict of the content of the
             definition.
-        configuration_id (int): ID of configuration in Accelize web service.
     """
 
-    def __init__(self, definition, configuration_id=None):
+    def __init__(self, definition):
         self._providers = set()
-        self._configuration_id = configuration_id
+        self._configuration_id = None
 
         # Load from dict
         if isinstance(definition, dict):
             self._path = None
+            definition = deepcopy(definition)
 
         # Load from file
         else:
@@ -136,7 +137,9 @@ class Application:
         """
         definition = cls._get_definition(application)
         configuration_id = definition['application'].pop('configuration_id')
-        return cls(definition, configuration_id=configuration_id)
+        instance = cls(definition)
+        instance._configuration_id = configuration_id
+        return instance
 
     @staticmethod
     def _get_definition(application):
@@ -198,38 +201,20 @@ class Application:
         """
         self._configuration_id = accelize_ws_session.request(
             '/auth/objects/productconfiguration/',
-            data=dumps(self._clean_definition),
+            data=dumps(self.to_dict()),
             method='post')['application']['configuration_id']
 
-    @classmethod
-    def delete(cls, application):
+    def delete(self):
         """
         Delete application definition on Accelize web service.
-
-        Args:
-            application (str or int): Application if format "product_id:version"
-                or "product_id" or configuration ID in Accelize web service.
-                If specific version of ID not specified, will delete the last
-                stable version.
         """
-        if not isinstance(application, int):
-            # Get configuration ID
-            application = cls._get_definition(
-                application)['application']['configuration_id']
+        if not self._configuration_id:
+            raise RuntimeException(
+                'Can only delete an application loaded with "from_id"')
 
         accelize_ws_session.request(
-            f'/auth/objects/productconfiguration/{application}/',
+            f'/auth/objects/productconfiguration/{self._configuration_id}/',
             method='delete')
-
-    @property
-    def configuration_id(self):
-        """
-        Configuration ID in Accelize web service.
-
-        Returns:
-            int: ID
-        """
-        return self._configuration_id
 
     @property
     def providers(self):
@@ -301,18 +286,16 @@ class Application:
         Args:
             path (path-like object): Path where save Yaml definition file.
         """
-        yaml_write(self._clean_definition, path or self._path)
+        yaml_write(self.to_dict(), path or self._path)
 
-    @property
-    def _clean_definition(self):
+    def to_dict(self):
         """
-        Return definition cleaned up from empty values.
+        Return definition as a dictionary.
 
         Returns:
             dict: definition
         """
-        from copy import deepcopy
-
+        # Clean up empty and None values
         definition = deepcopy(self._definition)
         for section_name in tuple(definition):
             section = definition[section_name]
@@ -322,7 +305,9 @@ class Application:
                     for key in tuple(element):
                         if not element[key] and element[key] is not False:
                             del element[key]
-                    if not element:
+                    if not element:  # pragma: no cover
+                        # Should never append because currently all list
+                        # sections have at least one mandatory key
                         section.remove(element)
 
             else:

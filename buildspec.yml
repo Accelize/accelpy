@@ -12,11 +12,15 @@ phases:
       python: 3.7
     commands:
       - $CODEBUILD_SRC_DIR_toolbox/install.py
-      - xlz install drmlib_cred_json=~/.accelize accelpy_common_tf accelpy_codecov_token
+      - xlz install accelpy_codebuild
+      - export ACCELPY_NO_COLOR=True
       - python3 -m pip install -Uq setuptools pip wheel pytest-cov codecov
       - python3 -m pip install -qe .
 
   build:
     commands:
-      - ACCELPY_NO_COLOR=True pytest -m require_csp --cov=accelpy --cov-report=term-missing
+      - pytest -m require_csp --cov=accelpy --cov-report=term-missing
+
+  post_build:
+    commands:
       - codecov

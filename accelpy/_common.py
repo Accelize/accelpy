@@ -395,9 +395,11 @@ def get_cli_cache(name, recursive=False):
     # Get cached value, or return None
     if recursive:
         names = []
-        while name:
+        while name and not name.endswith('|'):
             names.append(name)
             name = name[:-1]
+        names.append(name)
+
     else:
         names = name,
 

@@ -86,12 +86,12 @@ class Ansible:
 
             for dep_entry in dependencies:
 
-                if isinstance(dep_entry, str):
-                    # Formatted as "- name"
-                    dep = dep_entry
-                else:
+                try:
                     # Formatted as "- role: name"
                     dep = dep_entry['role']
+                except TypeError:  # pragma: no cover
+                    # May also be Formatted as "- name"
+                    dep = dep_entry
 
                 # Local dependencies: To initialize
                 if dep in roles_local and dep not in initialized_roles:

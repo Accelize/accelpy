@@ -156,8 +156,9 @@ def test_command_line_interface(tmpdir):
         assert not result.returncode
         assert name in result.stdout
 
-        # Test: push
-        # TODO: once server ready
+        # Test: push (Only test call, push function tested in another test)
+        result = cli('push', application)
+        assert result.returncode
 
         # Test: destroy
         result = cli('destroy', '-n', name, '-d', '-q')
@@ -197,6 +198,8 @@ def test_command_line_autocomplete(tmpdir):
     from os import environ, chdir, getcwd
     from os.path import relpath, isdir, join, dirname
     import accelpy._common as common
+    from accelpy.exceptions import AuthenticationException
+    import accelpy._application as accelpy_app
     from accelpy.__main__ import (
         _completer_warn, _application_completer, _provider_completer,
         _yaml_completer)
@@ -206,6 +209,47 @@ def test_command_line_autocomplete(tmpdir):
     environ['ACCELPY_CLI'] = 'True'
     common_cache_dir = common.CACHE_DIR
     common.CACHE_DIR = str(tmpdir.join('cache').ensure(dir=True))
+
+    # Mock Application
+    server_apps = ['accelize.com/accelpy/test', 'accelize.com/accelpy/ci']
+    server_versions = ['1.0.0', '1.1.1', '2.0.0']
+    server_raises = False
+
+    class Application(accelpy_app.Application):
+        """Mocked Application"""
+
+        @staticmethod
+        def list(prefix=''):
+            """
+            List applications
+
+            Args:
+                prefix (str): prefix
+
+            Returns:
+                list of str: applications
+            """
+            if server_raises:
+                raise AuthenticationException('Error')
+            return [value for value in server_apps if value.startswith(prefix)]
+
+        @staticmethod
+        def list_versions(product_id, prefix=''):
+            """
+            List versions.
+
+            Args:
+                product_id (str): product_id
+                prefix (str): prefix
+
+            Returns:
+                list of str: version
+            """
+            return [value for value in server_versions if
+                    value.startswith(prefix)]
+
+    accelpy_application_application = accelpy_app.Application
+    accelpy_app.Application = Application
 
     # Tests
     try:
@@ -236,15 +280,15 @@ def test_command_line_autocomplete(tmpdir):
         for path in not_matching:
             assert path not in result, path
 
-        # Test yaml completer with relative path
+        # Test yaml completer with relative path thought _application_completer
         chdir(str(yaml_dir))
 
         matching = [relpath(path) for path in matching]
         matching = [path + '/' if isdir(path) else path for path in matching]
         not_matching = [relpath(path) for path in not_matching]
 
-        prefix = 'matching'
-        result = list(_yaml_completer(prefix, Namespace()))
+        prefix = './matching'
+        result = list(_application_completer(prefix, Namespace()))
 
         for path in matching:
             assert path in result, path
@@ -255,11 +299,28 @@ def test_command_line_autocomplete(tmpdir):
         assert not list(_yaml_completer(
             str(yaml_dir.join('not_exits/not_exists')), Namespace()))
 
-        # Test Application completer
-        # TODO: once server ready
+        # Test Application completer from server
+        assert list(_application_completer(
+            'accelize.com', Namespace())) == server_apps
+        assert list(_application_completer(
+            'accelize.com/accelpy/test:', Namespace())) == [
+            f'accelize.com/accelpy/test:{version}'
+            for version in server_versions]
+
+        # Test Application completer from cache
+        assert list(_application_completer(
+            'accelize.com/accelpy/t', Namespace())) == [
+            'accelize.com/accelpy/test']
+        assert list(_application_completer(
+            'accelize.com/accelpy/test:2.', Namespace())) == [
+            'accelize.com/accelpy/test:2.0.0']
+
+        # Test application warning
+        server_raises = True
+        assert _application_completer('', Namespace()) is None
 
         # Test Provider completer, not application
-        assert not _provider_completer('', Namespace(application=None))
+        assert not _provider_completer('error', Namespace(application=None))
 
         # test Provider completer from definition
         excepted = ["aws,eu-west-1,f1"]
@@ -276,6 +337,7 @@ def test_command_line_autocomplete(tmpdir):
 
     # Clean up
     finally:
+        accelpy_app.Application = accelpy_application_application
         common.CACHE_DIR = common_cache_dir
         chdir(cwd)
         del environ['ACCELPY_CLI']

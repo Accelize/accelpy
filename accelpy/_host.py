@@ -500,7 +500,9 @@ class Host:
         """
         try:
             return bool(self._terraform.state_list())
-        except (AccelizeException, FileNotFoundError):
+        except (AccelizeException, FileNotFoundError):  # pragma: no cover
+            # Should not append, but avoid crash if file is missing for any
+            # reason
             return False
 
     def _clean_up(self):

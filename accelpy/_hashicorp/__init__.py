@@ -69,7 +69,8 @@ class Utility:
                 exec_version = line.split(' ')[1].strip().lstrip('v')
 
                 # If file is installed and up-to-date, returns its path
-                if exec_version == last_release['current_version']:
+                current_version = last_release['current_version']
+                if exec_version == current_version:  # pragma: no branch
                     return exec_file
 
             # Download executables checksum file and associated signature

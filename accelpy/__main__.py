@@ -273,7 +273,7 @@ def _get_cached_app(prefix, name, after, getter):
 
     # If no cached values, get from web server then cache values
     if not values:
-        values = set_cli_cache(cached, getter(prefix))
+        values = set_cli_cache(cached, list(getter(prefix)))
 
     # If cached values, filter before return
     else:
@@ -331,35 +331,29 @@ def _application_completer(prefix, parsed_args, **__):
     # - Only path should starts with "." or "/"
     # - Product ID is in format "vendor/library/name" should not contain more
     #   than 2 "/"
-    if (not prefix.startswith('.') and not prefix.startswith('/') and
-            prefix.count('/') <= 2):
+    if (prefix.startswith('.') or prefix.startswith('/') or
+            prefix.count('/') > 2):
+        return yaml_applications
 
-        from accelpy.exceptions import (
-            AuthenticationException, WebServerException)
+    # "product_id:version" formatted
+    if ':' in prefix:
+        name = 'version'
+        getter = _get_versions
 
-        try:
-            # "product_id:version" formatted
-            if ':' in prefix:
-                name = 'version'
-                getter = _get_versions
+    # "product_id" formatted
+    else:
+        name = 'product'
+        getter = _get_product_ids
 
-            # "product_id" formatted
-            else:
-                name = 'product'
-                getter = _get_product_ids
+    # Get from server or cache
+    from accelpy.exceptions import AuthenticationException
+    try:
+        return _get_cached_app(prefix, name, yaml_applications, getter)
 
-            return _get_cached_app(prefix, name, yaml_applications, getter)
-
-        except AuthenticationException as exception:
-            _completer_warn(
-                '"--application"/"-a" argument autocompletion require '
-                f'Accelize authentication: {exception}')
-
-        except WebServerException:
-            # Skip silently any other Accelize web service error.
-            pass
-
-    return yaml_applications
+    except AuthenticationException as exception:
+        _completer_warn(
+            '"--application"/"-a" argument autocompletion require '
+            f'Accelize authentication: {exception}')
 
 
 def _provider_completer(prefix, parsed_args, **_):
