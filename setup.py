@@ -46,7 +46,6 @@ PACKAGE_INFO = dict(
         'requests>=2.20.0',
         'ansible>=2.8',
         'argcomplete>=1.10',
-        # 'colorama', Let dependency version be managed by "awscli"
         # 'jinja2', Let dependency version be managed by "ansible"
         # 'mitogen>=0.2.7',
         'awscli>=1.16'  # To remove once Terraform support spot instance tagging

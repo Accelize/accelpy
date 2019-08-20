@@ -331,11 +331,7 @@ def test_color_str():
 
         # Test: ClI enabled
         is_cli = True
-        assert 'test' in color_str('test', 'RED')
-
-        # Test: Colorama already initialized
-        assert common._cache.get('colorama_initialized')
-        assert 'test' in color_str('test', 'RED')
+        assert color_str('test', 'RED') == '\033[31mtest\033[30m'
 
     # Restore mocked functions
     finally:

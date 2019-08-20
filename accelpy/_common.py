@@ -10,6 +10,7 @@ from os.path import (
     expanduser as _expanduser, isdir as _isdir, realpath as _realpath,
     join as _join, dirname as _dirname, basename as _basename,
     isfile as _isfile, splitext as _splitext)
+from platform import system as _system
 from subprocess import run as _run, PIPE as _PIPE
 from time import time as _time
 
@@ -23,12 +24,14 @@ from accelpy.exceptions import (
 HOME_DIR = _expanduser('~/.accelize')
 
 # Cached values storage
-_cache = dict()
 CACHE_DIR = _join(HOME_DIR, '.cache')
 
 # Ensure directory exists and have restricted access rights
 _makesdirs(CACHE_DIR, exist_ok=True)
 _chmod(HOME_DIR, 0o700)
+
+# ANSI shell colors
+_COLORS = dict(RED=31, GREEN=32, YELLOW=33, BLUE=34, PINK=35, CYAN=36, GREY=37)
 
 
 def json_read(path, **kwargs):
@@ -241,7 +244,8 @@ def no_color():
     Returns:
         bool: True if no color mode.
     """
-    return bool(_environ.get("ACCELPY_NO_COLOR", False))
+    return (bool(_environ.get("ACCELPY_NO_COLOR", False)) and
+            _system() != 'Windows')
 
 
 def debug():
@@ -275,23 +279,10 @@ def color_str(text, color):
     Returns:
         str: Colored text.
     """
-    # Disable color output if not in CLI mode or if color is disabled
     if not is_cli() or no_color():
+        # Disable color output if not in CLI mode or if color is disabled
         return text
-
-    # Lazy import colorama only if required and skip if not available.
-    try:
-        from colorama import init, Fore
-    except ImportError:  # pragma: no cover
-        return text
-
-    # Init colorama if not already done
-    if not _cache.get('colorama_initialized'):
-        init()
-        _cache['colorama_initialized'] = True
-
-    # Return colored output
-    return f'{getattr(Fore, color)}{text}{Fore.RESET}'
+    return f'\033[{_COLORS[color]}m{text}\033[30m'
 
 
 def error(text):
