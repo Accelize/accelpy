@@ -71,7 +71,7 @@ FORMAT = {
         '_node': dict,
         'use_service': dict(
             value_type=bool,
-            default=True),
+            default=False),
         'conf': dict(
             value_type=dict,
             default={}),

@@ -92,10 +92,12 @@ def _action_apply(args):
     host.apply(quiet=args.quiet)
     if not args.quiet:
         from accelpy._common import color_str
-        arg = ' -i $(accelpy ssh_private_key)' if host.ssh_private_key else ''
+        arg = (f' -i $(accelpy ssh_private_key -n {host.name})'
+               if host.ssh_private_key else '')
         print(color_str(
             "\nYou can connect to the host using the following command:\n"
-            f"ssh -Yt{arg} $(accelpy ssh_user)@$(accelpy public_ip)", 'CYAN'))
+            f"ssh -Yt{arg} $(accelpy ssh_user -n {host.name})@"
+            f"$(accelpy public_ip -n {host.name})", 'CYAN'))
 
 
 def _action_build(args):

@@ -21,6 +21,7 @@ package:
   type: container_image
 
 accelize_drm:
+  use_service: true
   conf:
     licensing:
       url: https://master.metering.accelize.com

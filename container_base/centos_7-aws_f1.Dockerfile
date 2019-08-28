@@ -4,26 +4,26 @@ SHELL ["/bin/bash", "-c"]
 # This dockerfile create an image containning:
 # - AWS FPGA runtimes
 # - Xilinx XRT runtimes (For AWS)
-# - An "appuser" user with "fpgauser" group
+# - Accelize DRM library (C/C++)
+# - Extra RPM repositories: EPEL, Accelize
+# - "appuser" user (UID = 1001)
+# - "fpgauser" group (GID = 1001)
 
-RUN yum install -y epel-release && \
+RUN curl -L https://accelize.s3.amazonaws.com/rpm/accelize_stable.repo -o /etc/yum.repos.d/accelize_stable.repo && \
+yum install -y epel-release && \
 yum install -y \
     gcc \
-    git \
+    libaccelize-drm \
     make \
     sudo && \
-git clone https://github.com/aws/aws-fpga /tmp/aws-fpga --depth 1 && \
+mkdir -p /tmp/aws-fpga && \
+export AWS_FPGA_RELEASE=$(curl -s https://api.github.com/repos/aws/aws-fpga/releases/latest | grep tag_name | cut -d '"' -f 4) && \
+curl -L https://github.com/aws/aws-fpga/archive/$AWS_FPGA_RELEASE.tar.gz | tar xz -C /tmp/aws-fpga --strip-components=1 && \
 source /tmp/aws-fpga/sdk_setup.sh && \
-yum erase -y \
-    gcc \
-    git \
-    make \
-    sudo && \
-curl -s https://s3.amazonaws.com/aws-fpga-developer-ami/1.6.0/Patches/XRT_2018_3_RC3_Patch1/xrt_201830.2.1.0_7.6.1810-xrt.rpm -o /tmp/xrt_201830.2.1.0_7.6.1810-xrt.rpm && \
-curl -s https://s3.amazonaws.com/aws-fpga-developer-ami/1.6.0/Patches/XRT_2018_3_RC3_Patch1/xrt_201830.2.1.0_7.6.1810-aws.rpm -o /tmp/xrt_201830.2.1.0_7.6.1810-aws.rpm && \
-yum install -y /tmp/xrt_201830.2.1.0_7.6.1810-xrt.rpm && \
-yum install -y /tmp/xrt_201830.2.1.0_7.6.1810-aws.rpm && \
-rm -Rf /tmp/* && \
+yum erase -y sudo && \
+yum install -y https://s3.amazonaws.com/aws-fpga-developer-ami/1.6.0/Patches/XRT_2018_3_RC3_Patch1/xrt_201830.2.1.0_7.6.1810-xrt.rpm && \
+yum install -y https://s3.amazonaws.com/aws-fpga-developer-ami/1.6.0/Patches/XRT_2018_3_RC3_Patch1/xrt_201830.2.1.0_7.6.1810-aws.rpm && \
+rm -rf /tmp/* && \
 rm -rf /var/cache/yum/* && \
 groupadd -g 1001 fpgauser && \
 useradd -mN -u 1001 -g fpgauser appuser

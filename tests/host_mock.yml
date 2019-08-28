@@ -12,6 +12,3 @@ package:
   aws,eu-west-1,f1:
     name: ami-0ff760d16d9497662
   type: vm_image
-
-accelize_drm:
-  use_service: false

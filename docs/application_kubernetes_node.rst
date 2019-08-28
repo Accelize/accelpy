@@ -1,12 +1,11 @@
 Kubernetes Node
 ===============
 
-The application is one or more preconfigured Kubernetes Nodes with a master
-node.
+This application provides a Kubernetes node that can be integrated into any
+Kubernetes architecture to run FPGA powered pods.
 
-The application type provision only the application as a single Kubernetes
-master/node that allow you to easily test your application with Kubernetes or
-as single node that can be integrated it in an existing Kubernetes
+This also allow provision the application as a single Kubernetes master/node
+to easily test the application on a standalone disposable Kubernetes
 infrastructure.
 
 Prerequisites
@@ -91,8 +90,18 @@ Each device plugin may require the add of extra options to work.
 The FPGA board type value also depend on the device plugin.
 See relevant device plugins documentation for more information:
 
+* `Intel boards <https://github.com/intel/intel-device-plugins-for-kubernetes/tree/master/cmd/fpga_plugin>`_
 * `Xilinx boards <https://github.com/Xilinx/FPGA_as_a_Service/tree/master/k8s-fpga-device-plugin/trunk>`_
-* `AWS F1 <https://github.com/Xilinx/FPGA_as_a_Service/tree/master/k8s-fpga-device-plugin/trunk/aws>`_
+* `AWS F1 instances <https://github.com/Xilinx/FPGA_as_a_Service/tree/master/k8s-fpga-device-plugin/trunk/aws>`_
+
+Security notice
+~~~~~~~~~~~~~~~
+
+Depending on the device plugin requirements, the container may run
+in `privileged` mode to have FPGA access. This means that the container run as
+`root` on your host.
+
+It is not recommanded to use privileged containers in production.
 
 Single node mode
 ----------------
@@ -108,12 +117,21 @@ The single node mod is mainly intended to be used with `accelpy build` to create
 a virtual machine image that can be used as base to create FPGA nodes in an
 existing Kubernetes infrastructure.
 
-To work properly, the relevant device plugin (See bellow) must be applied as
-daemon set on the master of your infrastructure.
+To work properly, the relevant device plugin (See bellow) must be applied on
+the master of your infrastructure.
 
-Security notice
----------------
+Here is a basic example showing how to deploy a device plugin and your
+application on the Kubernetes master (This assume you are connected on the
+master using SSH and `kubectl` is installed):
 
-Depending on the device plugin requirements, the container may run
-in `privileged` mode to have FPGA access. This means that the container run as
-`root` on your host.
+.. code-block:: bash
+
+    # Apply the device plugin
+    # Notes:
+    #   - The URL can be found on the relevant device plugin web page
+    #   - More instructions may be required depending on the device plugin, read
+    #     the documentation first.
+    kubectl apply -f url/to/fpga-device-plugin.yml
+
+    # Apply your deployments/pods/services (Repeat for each required YAML file)
+    kubectl apply -f my-deployment.yml

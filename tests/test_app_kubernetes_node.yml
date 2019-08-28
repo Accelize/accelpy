@@ -20,6 +20,7 @@ package:
   name: https://raw.githubusercontent.com/Accelize/accelpy/master/tests/app_kubernetes_node-aws_f1.yml
 
 accelize_drm:
+  use_service: true
   conf:
     licensing:
       url: https://master.metering.accelize.com

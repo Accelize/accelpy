@@ -186,19 +186,19 @@ This section define the DRM service configuration.
    :caption: Passing the Accelize DRM conf.json: YAML formatted
 
     accelize_drm:
+      use_service: true
       conf:
         licensing:
           url: https://master.metering.accelize.com
         drm:
           frequency_mhz: 125
           drm_ctrl_base_addr: 0
-        design:
-          boardType: ISV custom data
 
 .. code-block:: yaml
    :caption: Passing the Accelize DRM conf.json: JSON formatted
 
     accelize_drm:
+      use_service: true
       conf: {
         "licensing": {
           "url": "https://master.metering.accelize.com"

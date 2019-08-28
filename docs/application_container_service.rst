@@ -96,6 +96,8 @@ Except in rootless mode, depending on the configuration, the container may be
 run in `privileged` mode to have FPGA access. This means that the container run
 as `root` on your host.
 
+It is not recommanded to use privileged containers in production.
+
 How it work
 -----------
 

@@ -90,17 +90,17 @@ Documentation
 
 .. toctree::
    :maxdepth: 2
-   :caption: Provider examples
-
-   provider_aws
-   provider_host
-
-.. toctree::
-   :maxdepth: 2
    :caption: Application types
 
    application_container_service
    application_kubernetes_node
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Providers
+
+   provider_aws
+   provider_host
 
 .. toctree::
    :maxdepth: 2
