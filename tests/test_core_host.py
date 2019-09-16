@@ -165,7 +165,7 @@ def test_host(tmpdir):
 
         # Test: Missing Accelize DRM configuration
         application = mock_application(
-            source_dir, override={'accelize_drm': {}})
+            source_dir, override={'accelize_drm': {'use_service': True}})
 
         with pytest.raises(ConfigurationException):
             Host(application=application, user_config=source_dir,
