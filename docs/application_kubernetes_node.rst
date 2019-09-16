@@ -135,3 +135,10 @@ master using SSH and `kubectl` is installed):
 
     # Apply your deployments/pods/services (Repeat for each required YAML file)
     kubectl apply -f my-deployment.yml
+
+Examples
+--------
+
+Here are some examples of deployment using this application type:
+
+* :doc:`example_kubeless_function`

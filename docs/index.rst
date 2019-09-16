@@ -104,6 +104,12 @@ Documentation
 
 .. toctree::
    :maxdepth: 2
+   :caption: Applications examples
+
+   example_kubeless_function
+
+.. toctree::
+   :maxdepth: 2
    :caption: Accelize links
 
    GitHub project page <https://github.com/Accelize/accelpy>

@@ -57,7 +57,7 @@ def generates_cli_help(rst_path):
     cli = [sys.executable or 'python3', '../accelpy/__main__.py']
     commands = (
         '', 'init', 'plan', 'apply', 'destroy', 'build', 'private_ip',
-        'public_ip', 'ssh_user', 'ssh_private_key', 'list', 'lint')
+        'public_ip', 'ssh_user', 'ssh_private_key', 'list', 'lint', 'push')
     content = [
         'CLI',
         '====',

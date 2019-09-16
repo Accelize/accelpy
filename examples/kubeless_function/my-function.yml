@@ -1,0 +1,36 @@
+---
+apiVersion: kubeless.io/v1beta1
+kind: Function
+metadata:
+  name: my-function
+  namespace: default
+  label:
+    function: my-function
+spec:
+  runtime: python_fpga3.6
+  handler: my-function.list
+  deployment:
+    spec:
+      template:
+        spec:
+          containers:
+            - securityContext:
+                privileged: true
+                runAsUser: 0
+                runAsGroup: 0
+              resources:
+                limits:
+                  xilinx.com/fpga-xilinx_aws-vu9p-f1-04261818_dynamic_5_0-0: 1
+              volumeMounts:
+                - name: sys
+                  mountPath: /sys
+          volumes:
+          - name: sys
+            hostPath:
+              path: /sys
+  function-content-type: text
+  function: |
+    def list(event, context):
+        from subprocess import run, PIPE, STDOUT
+        return run(['/opt/xilinx/xrt/bin/awssak', 'list'],
+                   stderr=STDOUT, stdout=PIPE, universal_newlines=True).stdout

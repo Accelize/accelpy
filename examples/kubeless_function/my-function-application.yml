@@ -1,0 +1,21 @@
+---
+application:
+  product_id: my-function
+  type: kubernetes_node
+  version: 1.0.0
+
+firewall_rules:
+  - start_port: 30000
+    end_port: 32767
+    protocol: tcp
+    direction: ingress
+
+fpga:
+  image: agfi-071909cc191313a51
+  count: 1
+
+package:
+  - type: kubernetes_yaml
+    name: https://raw.githubusercontent.com/Accelize/accelpy/master/examples/kubeless_function/kubeless-namespace.yml
+  - type: kubernetes_yaml
+    name: https://github.com/kubeless/kubeless/releases/download/v1.0.4/kubeless-v1.0.4.yaml
