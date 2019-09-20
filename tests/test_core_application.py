@@ -372,6 +372,24 @@ fpga:
     with pytest.raises(ConfigurationException):
         Application(yml_file)
 
+        # Test: Bad value type for str type
+        yml_file.write("""
+application:
+  product_id: my_product_id
+  version: 1.0.0
+
+package:
+  - type: container_image
+    name: my_container_image
+
+fpga:
+  image: image
+  # Driver version should be a str
+  driver_version: 1.0
+    """)
+        with pytest.raises(ConfigurationException):
+            Application(yml_file)
+
     # Test: Bad value type in list
     yml_file.write("""
 application:

@@ -483,9 +483,12 @@ class Application:
 
         # Check single value type
         elif value is not None and not isinstance(value, value_type):
-            raise ConfigurationException(
-                f'The "{key}" key in "{section_name}" section must be a '
-                f'"{value_type.__name__}".')
+            if value_type is str:
+                value = str(value)
+            else:
+                raise ConfigurationException(
+                    f'The "{key}" key in "{section_name}" section must be a '
+                    f'"{value_type.__name__}".')
 
         valid_values = key_format.get('values')
         valid_regex = key_format.get('regex')

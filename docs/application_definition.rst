@@ -240,7 +240,7 @@ Example:
         type: vm_image
         name: ami-01010101010
 
-      aws,eu-west-2:
+      aws,eu-west-2,f1:
         type: vm_image
         name: ami-10101010101
 
@@ -254,7 +254,7 @@ Example:
         image: agfi-01010101010
         driver: aws_f1
 
-      aws,eu-west-2:
+      aws,eu-west-2,f1:
         image: agfi-10101010101
         driver: aws_f1
 

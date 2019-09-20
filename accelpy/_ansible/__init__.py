@@ -145,9 +145,6 @@ class Ansible:
         Returns:
             dict: Ansible environment.
         """
-        # TODO: Test and enable once Ansible 2.8 is supported
-        # import ansible_mitogen.plugins.strategy as strategy
-
         no_color_mode = no_color()
         debug_mode = debug()
         return {
@@ -165,9 +162,7 @@ class Ansible:
             # Speed up Ansible
             'ANSIBLE_PIPELINING': True,
             'ANSIBLE_SSH_ARGS':
-                '"-o ControlMaster=auto -o ControlPersist=60s"',
-            # 'ANSIBLE_STRATEGY': 'mitogen_linear',
-            # 'ANSIBLE_STRATEGY_PLUGINS': strategy.__path__[0],
+                '"-o ControlMaster=auto -o ControlPersist=60s"'
         }
 
     def _ansible(self, *args, utility=None, check=True, pipe_stdout=False,
