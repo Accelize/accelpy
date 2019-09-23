@@ -3,17 +3,3 @@
   become: true
   vars_files:
     - common.user_override.yml
-
-  pre_tasks:
-
-    - name: Accelize DRM, Move credential appuser home if service is disabled
-      set_fact: accelize_drm_cred_dst="/home/appuser/.accelize_drm/cred.json"
-      when: accelize_drm_disabled | bool
-
-    - name: Driver, force provider required driver over application driver
-      set_fact: fpga_driver="{{ provider_required_driver }}"
-      when: provider_required_driver is defined
-
-    - name: Driver, pass XRT version only if specified (Else use role default)
-      set_fact: xilinx_xrt_version="{{ fpga_driver_version }}"
-      when: fpga_driver_version is defined

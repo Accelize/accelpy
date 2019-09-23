@@ -21,8 +21,8 @@ export AWS_FPGA_RELEASE=$(curl -s https://api.github.com/repos/aws/aws-fpga/rele
 curl -L https://github.com/aws/aws-fpga/archive/$AWS_FPGA_RELEASE.tar.gz | tar xz -C /tmp/aws-fpga --strip-components=1 && \
 source /tmp/aws-fpga/sdk_setup.sh && \
 yum erase -y sudo && \
-yum install -y https://s3.amazonaws.com/aws-fpga-developer-ami/1.6.0/Patches/XRT_2018_3_RC3_Patch2/xrt_201830.2.1.0_7.6.1810-xrt.rpm && \
-yum install -y https://s3.amazonaws.com/aws-fpga-developer-ami/1.6.0/Patches/XRT_2018_3_RC3_Patch2/xrt_201830.2.1.0_7.6.1810-aws.rpm && \
+yum install -y https://s3.amazonaws.com/aws-fpga-developer-ami/1.7.0/Patches/XRT_2019_1_RC2/xrt_201910.2.2.0_7.6.1810-xrt.rpm && \
+yum install -y https://s3.amazonaws.com/aws-fpga-developer-ami/1.7.0/Patches/XRT_2019_1_RC2/xrt_201910.2.2.0_7.6.1810-aws.rpm && \
 rm -rf /tmp/* && \
 rm -rf /var/cache/yum/* && \
 groupadd -g 1001 fpgauser && \
