@@ -62,7 +62,7 @@ def test_ansible(tmpdir):
     ansible = Ansible(config_dir)
     ansible.create_configuration(variables=variables, user_config=source_dir)
     playbook = yaml_read(config_dir.join('playbook.yml'))[0]
-    assert 'pre_tasks' in playbook
+    assert 'hosts' in playbook
     assert playbook['vars'] == variables
     assert 'common.init' in playbook['roles']
 
@@ -81,7 +81,7 @@ def test_ansible(tmpdir):
     ansible = Ansible(config_dir)
     ansible.create_configuration(application_type='container_service')
     playbook = yaml_read(config_dir.join('playbook.yml'))[0]
-    assert 'pre_tasks' in playbook
+    assert 'hosts' in playbook
     assert not playbook['vars']
     assert 'container_service' in playbook['roles']
 
