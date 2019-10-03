@@ -16,7 +16,7 @@
     purge: true
   retries: 10
   delay: 1
-  when: ansible_os_family == 'Debian'
+  when: ansible_os_family == 'Debian' and os_packages_updates | bool
 
 - name: Ensure system is up to date
   yum:
@@ -24,7 +24,7 @@
     state: latest  # noqa 403
   retries: 10
   delay: 1
-  when: ansible_os_family == 'RedHat'
+  when: ansible_os_family == 'RedHat' and os_packages_updates | bool
 
 - name: Ensure FPGA user group exists
   group:
