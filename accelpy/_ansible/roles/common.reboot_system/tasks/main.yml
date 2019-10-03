@@ -1,6 +1,0 @@
----
-- name: Ensure system is rebooted
-  reboot:
-
-- name: Ensure Ansible facts are up to date
-  setup:
