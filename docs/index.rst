@@ -92,6 +92,7 @@ Documentation
    :maxdepth: 2
    :caption: Application types
 
+   application_ansible_role
    application_container_service
    application_kubernetes_node
 

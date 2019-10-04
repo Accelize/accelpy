@@ -24,7 +24,7 @@ FORMAT = {
                   r'(\+[0-9a-zA-Z-]+(\.[0-9a-zA-Z-]+)*)?$'),
         'type': dict(
             required=True,
-            values=('container_service', 'kubernetes_node'),
+            values=('container_service', 'kubernetes_node', 'ansible_role'),
             default='container_service'),
         'variables': dict(
             value_type=dict,
@@ -34,7 +34,8 @@ FORMAT = {
         '_node': list,
         'type': dict(
             default='container_image',
-            values=('container_image', 'vm_image', 'kubernetes_yaml')),
+            values=('container_image', 'vm_image', 'kubernetes_yaml',
+                    'ansible_role')),
         'name': dict(
             required=True,),
         'version': dict(),
@@ -58,8 +59,8 @@ FORMAT = {
     'fpga': {
         '_node': dict,
         'image': dict(
-            required=True,
-            value_type=(list, str)),
+            value_type=(list, str),
+            default=[]),
         'driver': dict(
             values=('aws_f1', 'xilinx_xrt')),
         'driver_version': dict(),

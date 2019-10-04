@@ -24,7 +24,9 @@
         "--extra-vars",
         "ansible_python_interpreter=auto",
         "--extra-vars",
-        "provider_required_driver={{user `provider_required_driver`}}"
+        "provider_required_driver={{user `provider_required_driver`}}",
+        "--extra-vars",
+        "master_node=false"
       ]
     }
   ],

@@ -6,11 +6,11 @@
 
 # Enable OS security hardening
 # See "https://galaxy.ansible.com/dev-sec/os-hardening" for more information
-os_hardening: false
+os_hardening: true
 
 # Enable SSH security hardening
 # See "https://galaxy.ansible.com/dev-sec/ssh-hardening" for more information
-ssh_hardening: false
+ssh_hardening: true
 
 # Enable OS packages updates
 os_packages_updates: true

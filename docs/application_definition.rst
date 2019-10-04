@@ -34,7 +34,7 @@ This section is a mapping of following key, values pairs:
   to filter configuration and use correct Ansible roles to deploy the
   application. For more information on each application type, see the
   "application type" section of the right menu. Predefined application types
-  are: `container_service`, `kubernetes_node`.
+  are: `ansible_role`, `container_service`, `kubernetes_node`.
 * `variables` (mapping of strings): Application type specific variables. See the
   application type documentation for more information.
 
@@ -60,6 +60,8 @@ This section is a list of mappings with following key values pairs:
 * `type` (string): **Required**. Package type. Each application type support a
      limited subset of package types. Predefined package types are:
 
+    * `ansible_role`: One or more Ansible role, available locally in a `roles`
+      subdirectory or on `Ansible Galaxy <https://galaxy.ansible.com>`_.
     * `container_image`: A Docker or OCI container image.
     * `kubernetes_yaml`: URL to a Kubernetes deployment, pod, service, ...
       YAML or JSON file.
@@ -151,7 +153,7 @@ device(s).
 * `driver` (string): The FPGA driver to use. If not specified, default to the
   Linux Kernel driver or the provider specific driver.
   Possible values : `aws_f1` (AWS F1 instances only), `xilinx_xrt` (Xilinx XRT).
-* `image` (string or list of string): **Required**. The FPGA bitstream image to
+* `image` (string or list of string): The FPGA bitstream image to
   use to program the FPGA. Depending the provider this can be an ID, a path or
   an URL. If multiple FPGA are required, must be a list of FPGA bitstream (One
   for each FPGA slot).

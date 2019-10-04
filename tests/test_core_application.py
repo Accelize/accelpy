@@ -194,7 +194,7 @@ fpga:
     assert isinstance(app['application'], dict)
 
     # Test: get
-    assert app['fpga']['image'] is None
+    assert app['fpga']['image'] == []
     assert app['my_provider']['fpga']['image'] == ['my_fpga_image']
     assert app['package'][0]['type'] == 'container_image'
     assert app['my_provider']['package'][0]['type'] == 'vm_image'
@@ -372,8 +372,8 @@ fpga:
     with pytest.raises(ConfigurationException):
         Application(yml_file)
 
-        # Test: Bad value type for str type
-        yml_file.write("""
+    # Test: Bad value type for str type
+    yml_file.write("""
 application:
   product_id: my_product_id
   version: 1.0.0
@@ -387,8 +387,7 @@ fpga:
   # Driver version should be a str
   driver_version: 1.0
     """)
-        with pytest.raises(ConfigurationException):
-            Application(yml_file)
+    Application(yml_file)
 
     # Test: Bad value type in list
     yml_file.write("""

@@ -35,6 +35,10 @@ class Ansible:
         """
         roles_local = dict()
         yaml_files = dict()
+        roles_versions = {}
+        application_roles = []
+        galaxy_roles = set()
+        roles_to_init = set()
 
         # Get sources
         for source_dir in get_sources_dirs(dirname(__file__), user_config):
@@ -55,6 +59,22 @@ class Ansible:
                     elif splitext(entry.name)[1] == '.yml':
                         yaml_files[entry.name] = entry.path
 
+        # Special case of tha application type is one or more Ansible role
+        if application_type == 'ansible_role':
+            application_type = ''
+            for package in variables['app_packages']:
+                role = package['name']
+                application_roles.append(role)
+
+                # Local role
+                if role in roles_local:
+                    roles_to_init.add(role)
+
+                # Role from galaxy
+                else:
+                    galaxy_roles.add(role)
+                    roles_versions[role] = package.get('version')
+
         # Filter roles
         roles = {name: path for name, path in roles_local.items()
                  if name.split('.', 1)[0] in get_sources_filters(
@@ -63,8 +83,7 @@ class Ansible:
         # Initialize roles
         role_dir = join(self._config_dir, 'roles')
         makedirs(role_dir, exist_ok=True)
-        galaxy_roles = set()
-        roles_to_init = set(roles)
+        roles_to_init.update(roles)
         initialized_roles = set()
 
         while roles_to_init:
@@ -89,6 +108,7 @@ class Ansible:
                 try:
                     # Formatted as "- role: name"
                     dep = dep_entry['role']
+                    roles_versions[dep] = dep_entry.get('version')
                 except TypeError:  # pragma: no cover
                     # May also be Formatted as "- name"
                     dep = dep_entry
@@ -99,7 +119,8 @@ class Ansible:
 
                 # Ansible Galaxy dependencies: To download
                 elif dep not in roles_local:
-                    galaxy_roles.add(dep)
+                    version = roles_versions.get(dep)
+                    galaxy_roles.add(f'{dep},{version}' if version else dep)
 
         # Install dependencies from Ansible Galaxy
         self.galaxy_install(galaxy_roles, roles_path=role_dir)
@@ -112,7 +133,8 @@ class Ansible:
         roles = sorted(roles)
         playbook[0]['roles'] = (
             [role for role in roles if role.endswith('.init')] +
-            [role for role in roles if not role.endswith('.init')])
+            [role for role in roles if not role.endswith('.init')] +
+            application_roles)
 
         yaml_write(playbook, join(self._config_dir, 'playbook.yml'))
 

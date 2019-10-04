@@ -182,21 +182,22 @@ Create a node image with Accelpy
 Since our application is now ready and fully working in master/node, time is
 ready to push it in production on our existing Kubernetes infrastructure on AWS.
 
-First, we need to pass some variables to Ansible to move to the
-single node mode and optionally specify the join command that will automatically
-join the node to an existing Kubernetes infrastructure. This can be done with
-the user override file.
+It is possible to pass some variables to Ansible to specify the join
+command that will automatically join the node to an existing Kubernetes
+infrastructure. This can be done with the user override file:
 
 .. code-block:: yaml
     :caption: ~/.accelize/common.user_override.yml
 
     ---
-    # Set as node only
-    master_node: false
-
     # Add join command from your master, you can get it with kubeadm
     # command: "kubeadm token create --print-join-command"
     kubernetes_join_command: join command
+
+.. note:: Using the override file is not the only way to execute the join
+          command on the node instance. It is also possible to execute it on
+          node instantiation (By example with the "cloud init" / "user data"
+          provided by some cloud providers).
 
 Then we run accelpy to build an image of the node and add its AMI to the
 application definition.

@@ -27,3 +27,9 @@ rm -rf /tmp/* && \
 rm -rf /var/cache/yum/* && \
 groupadd -g 1001 fpgauser && \
 useradd -mN -u 1001 -g fpgauser appuser
+
+# Setup Xilinx XRT environment (Same as "source /opt/xilinx/xrt/setup.sh")
+ENV XILINX_XRT=/opt/xilinx/xrt
+ENV PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/xilinx/xrt/bin
+ENV LD_LIBRARY_PATH=/opt/xilinx/xrt/lib
+ENV PYTHONPATH=/opt/xilinx/xrt/python
