@@ -1,0 +1,99 @@
+---
+
+- name: Use TMPFS as temporary directories
+  # Because F1 instances have large amount of RAM and low main volume size.
+  mount:
+    fstype: tmpfs
+    name: "{{ item }}"
+    opts: defaults,noatime
+    src: tmpfs
+    state: mounted
+  with_items:
+    - /tmp
+    - /var/cache/nginx
+
+- name: Ensure Python packages are installed
+  pip:
+    name:
+      - falcon
+      - gunicorn
+      - numpy
+      - pyopencl
+      - watchtower
+    executable: pip3
+    extra_args: --no-cache-dir --disable-pip-version-check --prefix /usr
+  retries: 10
+  delay: 1
+
+- name: Ensure TRNG package directory exists
+  file:
+    path: /usr/lib/python3.6/site-packages/trng/
+    state: directory
+
+- name: Ensure TRNG package __init__.py exists
+  file:
+    path: /usr/lib/python3.6/site-packages/trng/__init__.py
+    state: touch
+
+- name: Ensure TRNG FPGA image binary file is installed
+  copy:
+    src: app.awsxclbin
+    dest: "{{ fpga_binary }}"
+
+- name: Ensure TRNG WSGI application is installed
+  template:
+    src: app.py
+    dest: /usr/lib/python3.6/site-packages/trng/app.py
+
+- name: Ensure TRNG systemd service is installed
+  template:
+    src: trng.service.j2
+    dest: /etc/systemd/system/trng.service
+
+- name: Ensure TRNG systemd service is started and enabled at boot
+  service:
+    name: trng
+    state: started
+    enabled: true
+
+- name: Ensure Nginx user is member of "fpgauser" group
+  user:
+    name: nginx
+    groups: fpgauser
+    append: true
+
+- name: Ensure Nginx site configuration is installed
+  template:
+    src: trng.conf.j2
+    dest: /etc/nginx/conf.d/trng.conf
+
+- name: Ensure certificate is present
+  copy:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    owner: root
+    group: root
+    mode: 0600
+  with_items:
+    - src: "{{ nginx_ssl_certificate }}"
+      dest: "{{ nginx_ssl_certificate_dst }}"
+    - src: "{{ nginx_ssl_certificate_key }}"
+      dest: "{{ nginx_ssl_certificate_key_dst }}"
+    - src: "{{ nginx_ssl_trusted_certificate }}"
+      dest: "{{ nginx_ssl_trusted_certificate_dst }}"
+  when: nginx_ssl_certificate | bool
+
+- name: Ensure at least an unsecure self-signed certificate is present
+  command: "openssl req -x509 -newkey rsa:4096 -keyout private/trng.key
+            -out certs/trng.crt -days 3650 -nodes
+            -subj '/CN=trng'"
+  args:
+    chdir: /etc/pki/tls/
+    creates: /etc/pki/tls/private/trng.key
+  when: not nginx_ssl_certificate | bool
+
+- name: Ensure Nginx service is started and enabled at boot
+  service:
+    name: nginx
+    state: started
+    enabled: true

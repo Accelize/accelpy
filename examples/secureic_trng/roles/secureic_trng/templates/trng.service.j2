@@ -1,0 +1,15 @@
+[Unit]
+Description=TRNG web service
+
+[Service]
+ExecStartPre=/usr/bin/fpga-clear-local-image -S 0 -H
+ExecStart=/usr/bin/gunicorn trng.app -b unix:{{ gunicorn_socket }} -w 1 --worker-tmp-dir /dev/shm -k gthread --threads 16 -u appuser -g fpgauser -m 0017
+Restart=on-failure
+
+# Setup Xilinx XRT environment (Same as "source /opt/xilinx/xrt/setup.sh")
+Environment=XILINX_XRT=/opt/xilinx/xrt
+Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/xilinx/xrt/bin
+Environment=LD_LIBRARY_PATH=/opt/xilinx/xrt/lib
+
+[Install]
+WantedBy=default.target

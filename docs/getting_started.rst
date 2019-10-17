@@ -158,6 +158,9 @@ Always using the same host image to generate new hosts ensure immutability, but
 don't forget to regularly regenerate the image and host that use it to ensure
 system software are up to date and keep them secure.
 
+.. warning:: Never share your image with untrusted people. It contain a copy
+             of your Accelize credential.
+
 SSH connection
 ~~~~~~~~~~~~~~
 

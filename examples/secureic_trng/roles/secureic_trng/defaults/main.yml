@@ -1,0 +1,22 @@
+---
+# Set to non empty string to enable debug output
+debug_mode: ''
+
+# FPGA image binary
+fpga_binary: /usr/lib/python3.6/site-packages/trng/app.awsxclbin
+
+# Same as "accelize.accelize_drm" role varibles
+accelize_drm_driver_name: aws_f1
+accelize_drm_conf_dst: /etc/accelize_drm/conf.json
+accelize_drm_cred_dst: /root/.accelize_drm/cred.json
+
+# Nginx SSL certificate
+nginx_ssl_certificate:
+nginx_ssl_certificate_dst: /etc/pki/tls/certs/trng.crt
+nginx_ssl_trusted_certificate:
+nginx_ssl_trusted_certificate_dst: /etc/pki/tls/certs/trng_ca.crt
+nginx_ssl_certificate_key:
+nginx_ssl_certificate_key_dst: /etc/pki/tls/private/trng.key
+
+# Gunicorn socket path
+gunicorn_socket: /var/run/gunicorn.sock

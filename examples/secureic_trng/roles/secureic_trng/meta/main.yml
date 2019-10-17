@@ -1,0 +1,25 @@
+---
+galaxy_info:
+  role_name: secureic_trng
+  author: Accelize
+  description: 'This Ansible role install Secure-IC FPGA TRNG.'
+  company: Accelize
+  license: Apache License 2.0
+  min_ansible_version: '2.8'
+  platforms:
+    - name: EL
+      versions:
+        - 7
+  galaxy_tags:
+    - system
+    - fpga
+    - trng
+dependencies:
+  - role: nginxinc.nginx
+    vars:
+      nginx_start: false  # Started in tasks
+      nginx_branch: stable
+      nginx_cleanup_config: true
+      nginx_main_template_enable: true
+      nginx_http_upload_enable: true
+  - role: dev-sec.nginx-hardening

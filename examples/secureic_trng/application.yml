@@ -1,0 +1,29 @@
+---
+application:
+  product_id: secureic-trng
+  type: ansible_role
+  version: 1.0.0
+
+firewall_rules:
+  - start_port: 80
+    end_port: 80
+    protocol: tcp
+    direction: ingress
+  - start_port: 443
+    end_port: 443
+    protocol: tcp
+    direction: ingress
+
+fpga:
+  count: 1
+
+package:
+  type: ansible_role
+  name: secureic_trng
+
+accelize_drm:
+  conf:
+    licensing:
+      url: https://master.metering.accelize.com
+    drm:
+      frequency_mhz: 250
