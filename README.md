@@ -1,4 +1,4 @@
-**This expiremental project is cancelled**
+:warning: **This project is cancelled and unmaintened**
 
 # Overview
 
